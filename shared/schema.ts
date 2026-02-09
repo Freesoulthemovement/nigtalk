@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ export const tribes = pgTable("tribes", {
   name: text("name").notNull(),
   description: text("description"),
   createdBy: varchar("created_by").references(() => users.id).notNull(),
+  category: text("category").default("general"), // tribes, sports, sovereignty, etc.
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -17,7 +18,8 @@ export const tribeMembers = pgTable("tribe_members", {
   id: serial("id").primaryKey(),
   tribeId: integer("tribe_id").references(() => tribes.id).notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  role: text("role").default("member"), // admin, member
+  role: text("role").default("member"),
+  hasAcceptedTerms: boolean("has_accepted_terms").default(false),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
@@ -28,16 +30,27 @@ export const videos = pgTable("videos", {
   description: text("description"),
   videoUrl: text("video_url").notNull(),
   thumbnailUrl: text("thumbnail_url"),
-  tribeId: integer("tribe_id").references(() => tribes.id), // Optional, if private to tribe
+  tribeId: integer("tribe_id").references(() => tribes.id),
+  category: text("category").default("general"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  tribeId: integer("tribe_id").references(() => tribes.id).notNull(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
+  tribeId: integer("tribe_id").references(() => tribes.id),
+  senderId: varchar("sender_id").references(() => users.id).notNull(),
+  receiverId: varchar("receiver_id").references(() => users.id), // For DMs
   content: text("content").notNull(),
+  isRadio: boolean("is_radio").default(false), // For push-to-talk/audio snippets
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userBestowals = pgTable("user_bestowals", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  monthlyAmount: decimal("monthly_amount", { precision: 10, scale: 2 }).default("0.00"),
+  fscBalance: decimal("fsc_balance", { precision: 20, scale: 8 }).default("0.00"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const comments = pgTable("comments", {
@@ -83,8 +96,12 @@ export const videosRelations = relations(videos, ({ one, many }) => ({
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
-  user: one(users, {
-    fields: [messages.userId],
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
+  receiver: one(users, {
+    fields: [messages.receiverId],
     references: [users.id],
   }),
   tribe: one(tribes, {
@@ -93,22 +110,11 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
-export const commentsRelations = relations(comments, ({ one }) => ({
-  user: one(users, {
-    fields: [comments.userId],
-    references: [users.id],
-  }),
-  video: one(videos, {
-    fields: [comments.videoId],
-    references: [videos.id],
-  }),
-}));
-
 // Schemas
 export const insertTribeSchema = createInsertSchema(tribes).omit({ id: true, createdAt: true, createdBy: true });
 export const insertVideoSchema = createInsertSchema(videos).omit({ id: true, createdAt: true, userId: true });
-export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, userId: true });
-export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, userId: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, senderId: true });
+export const insertBestowalSchema = createInsertSchema(userBestowals).omit({ id: true, updatedAt: true, userId: true });
 
 // Types
 export type Tribe = typeof tribes.$inferSelect;
@@ -117,6 +123,4 @@ export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
-export type Comment = typeof comments.$inferSelect;
-export type InsertComment = z.infer<typeof insertCommentSchema>;
-export type TribeMember = typeof tribeMembers.$inferSelect;
+export type UserBestowal = typeof userBestowals.$inferSelect;
