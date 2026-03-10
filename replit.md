@@ -1,7 +1,7 @@
 # NigTalk — Free Soul The Movement
 
 ## Overview
-NigTalk is a social media platform for the Free Soul Ecclesiastical Movement. It combines TikTok-style vertical video feeds, Discord/Telegram-style tribal messaging, Radio/Push-to-Talk live communication, tribe management, Free Soul Coin (FSC) bestowal system (1 FSC = $100), and a Community Standards onboarding screen.
+NigTalk is a sovereign community social media platform for the Free Soul Ecclesiastical Movement. It features TikTok-style vertical video feeds, tribal messaging, Bluetooth mesh Radio/Push-to-Talk, tribe management, Free Soul Coin (FSC) attention-based bestowal system, and a Community Standards onboarding screen.
 
 ## Architecture
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
@@ -10,16 +10,25 @@ NigTalk is a social media platform for the Free Soul Ecclesiastical Movement. It
 - **Auth**: Replit Auth (session-based)
 - **Storage**: Replit Object Storage for media uploads
 
+## Visual Design
+- Deep dark navy/purple gradient background (222° 47% 5% → 265° 30% 7%)
+- Glass-morphism cards with subtle borders (rgba blue/purple tints)
+- Purple gradient accent (from-purple-600 to-indigo-600)
+- Cyan accent for upload FAB and secondary highlights
+- Outfit font for headings, Inter for body text
+- "NIGTALK" gradient text branding, "Tune In. Speak Freely." tagline
+
 ## Key Features
-1. **Community Standards Onboarding** — Checkboxes + Terms/Privacy before entering app
-2. **Explore Screen** — Categories: Tribes, Frequencies, Sports, Blueprints, Random
-3. **Stream Mode** — TikTok-style vertical video feed per category
+1. **Community Standards Onboarding** — NIGTALK branding, 3 feature icons, Tribal Code bullet points, 2 checkboxes, gradient Continue button
+2. **Explore Screen** — Tribes horizontal scroll cards, Frequencies pills with member counts, Sports category cards, Important Events, Blueprints link
+3. **Stream Mode** — TikTok-style vertical video feed with category tabs (All/Tribes/Sports/Events/Nonprofits), engagement buttons
 4. **Tribes** — Create/join tribes, group chat with real-time polling
-5. **Radio/Push-to-Talk** — Online/offline status, hold-to-broadcast button
-6. **Bestowal** — FSC balance display, monthly bestowal adjustment (password-protected)
-7. **Direct Messaging** — User-to-user DMs with conversation list
-8. **Video Upload** — Category-tagged video publishing
-9. **Profile** — User profile with stats and settings
+5. **Radio/Push-to-Talk** — Bluetooth Mesh mode, Online/Mesh toggle, Channels (NigTalk/Random/Mental Health), My Tribes slots, Now Tuned live card, hold-to-talk bar
+6. **Bestowal** — "Pay Attention! Creators Blessing.", date/period badge, 5 stat cards (Monthly Contribution, Creator Pool 90%, FSC, Creators Supported, Time Watched), How Bestowal Works rules, Supported Creators 0/100, Send Direct Gift, 7 Layers of Mutual Bestowal
+7. **Library/Blueprints** — Governance documents: Free Soul Charter, Constitution, PMA Agreement, Trust Indenture (verified, versioned)
+8. **Direct Messaging** — User-to-user DMs with conversation list
+9. **Video Upload** — Category-tagged video publishing
+10. **Profile** — User profile with stats, messages link, settings, logout
 
 ## Database Schema
 - `users` — Replit Auth managed (id, email, firstName, lastName, profileImageUrl)
@@ -35,8 +44,6 @@ NigTalk is a social media platform for the Free Soul Ecclesiastical Movement. It
 ```
 shared/
   schema.ts          — Drizzle schema, types, insert schemas
-  routes.ts          — API route definitions with Zod validation
-  models/auth.ts     — Auth table definitions
 server/
   routes.ts          — Express API route handlers
   storage.ts         — Database CRUD operations
@@ -44,17 +51,19 @@ server/
   index.ts           — Server entry point
 client/src/
   App.tsx            — Router with auth + onboarding flow
+  index.css          — Global theme (navy/purple gradient, glass-card, stat-card, gradient-text)
   pages/
-    landing.tsx      — Pre-login landing page
-    onboarding.tsx   — Community Standards checkboxes
-    explore.tsx      — Category grid + stream mode
-    tribes.tsx       — Tribe list + create
+    landing.tsx      — Pre-login landing page with feature cards
+    onboarding.tsx   — Community Standards with NIGTALK branding
+    explore.tsx      — Tribes, Frequencies, Sports, Events, Blueprints + stream mode
+    tribes.tsx       — Tribe list + create dialog
     tribe-detail.tsx — Tribe chat + member management
-    radio.tsx        — Push-to-talk interface
-    bestowal.tsx     — FSC balance + monthly bestowal settings
+    radio.tsx        — Push-to-talk with Bluetooth Mesh mode
+    bestowal.tsx     — FSC balance + 7 layers + supported creators
+    library.tsx      — Governance documents (Blueprints)
     messaging.tsx    — Direct messages
     upload.tsx       — Video upload with category selection
-    profile.tsx      — User profile
+    profile.tsx      — User profile with tabs
   components/
     nav-bar.tsx      — Bottom navigation (Explore, Radio, Upload, Bestowal, Profile)
     video-card.tsx   — Full-screen video player for stream mode
@@ -65,10 +74,12 @@ client/src/
 ```
 
 ## FSC (Free Soul Coin) Logic
-- 1 FSC = $100
-- 1% of platform contributions converted to FSC
-- Platform privately matches 1/5 of needs contributions
-- FSC will eventually be land-backed
+- 1% of platform fee converted to FSC per user
+- 90% of monthly contribution goes to Creator Pool
+- 5% platform fee, 5% Needs Fund (community support pool)
+- Self-bestowal cap: 5%, Max 100 creators/month
+- Sessions count after 5 seconds, qualifying threshold 1% of attention
+- Do NOT show FSC-to-dollar conversion on UI
 
 ## Support Contact
 nigtalksupport@freesoulthemovement

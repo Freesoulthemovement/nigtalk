@@ -2,134 +2,214 @@ import { useState } from "react";
 import { NavBar } from "@/components/nav-bar";
 import { useVideos } from "@/hooks/use-videos";
 import { VideoCard } from "@/components/video-card";
-import { Loader2, ArrowLeft, Compass, Users, Radio, Dumbbell, FileText, Shuffle } from "lucide-react";
+import { Loader2, Plus, Shield, Radio, Trophy, Globe, Shuffle, FileText, ChevronRight, X, Users } from "lucide-react";
 import { Link } from "wouter";
 import { useTribes } from "@/hooks/use-tribes";
 
-const categories = [
-  { id: "tribes", label: "Tribes", icon: Users, color: "from-violet-500 to-purple-600", description: "Community movements & organizations" },
-  { id: "frequencies", label: "Frequencies", icon: Radio, color: "from-cyan-500 to-blue-600", description: "Tune into live streams & broadcasts" },
-  { id: "sports", label: "Sports", icon: Dumbbell, color: "from-orange-500 to-red-600", description: "Athletic content & competitions" },
-  { id: "blueprints", label: "Blueprints", icon: FileText, color: "from-emerald-500 to-green-600", description: "Plans, guides & sovereign knowledge" },
-  { id: "random", label: "Random", icon: Shuffle, color: "from-pink-500 to-rose-600", description: "Random chats & giveaways" },
+const streamCategories = [
+  { id: "all", label: "All" },
+  { id: "tribes", label: "Tribes" },
+  { id: "sports", label: "Sports" },
+  { id: "events", label: "Events" },
+  { id: "nonprofits", label: "Nonprofits" },
+];
+
+const frequencies = [
+  { name: "Sovereign Tech", members: 1247, color: "border-cyan-500/40 text-cyan-400" },
+  { name: "Food Sovereignty", members: 2103, color: "border-green-500/40 text-green-400" },
+  { name: "Energy Freedom", members: 1856, color: "border-amber-500/40 text-amber-400" },
+];
+
+const sports = [
+  { name: "Football", icon: Trophy },
+  { name: "Basketball", icon: Trophy },
+  { name: "Baseball", icon: Trophy },
+];
+
+const events = [
+  { title: "Global Climate Summit 2025", tag: "Politics" },
+  { title: "Wildfire Relief Efforts", tag: "Disasters" },
 ];
 
 export default function ExplorePage() {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [streamMode, setStreamMode] = useState(false);
+  const [streamCategory, setStreamCategory] = useState("all");
 
-  if (activeCategory) {
-    return <StreamView category={activeCategory} onBack={() => setActiveCategory(null)} />;
+  if (streamMode) {
+    return <StreamView category={streamCategory} onBack={() => setStreamMode(false)} onCategoryChange={setStreamCategory} />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-20">
-      <div className="p-4 pt-6 md:p-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <Compass className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold font-display" data-testid="text-explore-title">Explore</h1>
-              <p className="text-sm text-muted-foreground">Discover content across the movement</p>
-            </div>
+    <div className="flex flex-col min-h-screen pb-24 animate-in-fade">
+      <div className="px-5 pt-8 pb-4">
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <h1 className="text-4xl font-bold font-display" data-testid="text-explore-title">Explore</h1>
+            <p className="text-muted-foreground text-sm mt-1">Tune In. Speak Freely.</p>
           </div>
+          <Link href="/upload">
+            <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/30" data-testid="button-upload-fab">
+              <Plus className="w-6 h-6 text-white" />
+            </div>
+          </Link>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 text-left hover:border-primary/50 hover:-translate-y-1 transition-all duration-300"
-                data-testid={`button-category-${cat.id}`}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-5 group-hover:opacity-10 transition-opacity`} />
-                <div className="relative z-10">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${cat.color} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
-                    <cat.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-lg font-bold mb-1">{cat.label}</h3>
-                  <p className="text-sm text-muted-foreground">{cat.description}</p>
+      <div className="px-5 space-y-7 flex-1">
+        <TribesSection onStream={() => { setStreamCategory("tribes"); setStreamMode(true); }} />
+
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <Radio className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-lg font-bold font-display">Frequencies</h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+            {frequencies.map((f) => (
+              <div key={f.name} className="shrink-0">
+                <div className={`px-4 py-2 rounded-full border ${f.color} bg-white/5 text-sm font-medium whitespace-nowrap`} data-testid={`chip-frequency-${f.name}`}>
+                  {f.name}
                 </div>
+                <p className="text-[11px] text-muted-foreground text-center mt-1.5">{f.members.toLocaleString()} members</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-lg font-bold font-display">Sports</h2>
+            </div>
+            <button onClick={() => { setStreamCategory("sports"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-sports-stream">
+              Stream <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-3">
+            {sports.map((s) => (
+              <button
+                key={s.name}
+                onClick={() => { setStreamCategory("sports"); setStreamMode(true); }}
+                className="flex-1 glass-card rounded-2xl p-4 flex flex-col items-center gap-2 hover:border-cyan-500/30 transition-colors"
+                data-testid={`card-sport-${s.name}`}
+              >
+                <s.icon className="w-8 h-8 text-cyan-400" />
+                <span className="text-sm font-medium">{s.name}</span>
               </button>
             ))}
           </div>
+        </section>
 
-          <TribesList />
-        </div>
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-bold font-display">Important Events</h2>
+            </div>
+            <button onClick={() => { setStreamCategory("events"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-events-stream">
+              Stream <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-3">
+            {events.map((e) => (
+              <div key={e.title} className="flex-1 glass-card rounded-2xl p-4" data-testid={`card-event-${e.tag}`}>
+                <h3 className="font-semibold text-sm mb-2">{e.title}</h3>
+                <span className="text-xs text-muted-foreground">{e.tag}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-bold font-display">Blueprints</h2>
+            </div>
+            <Link href="/blueprints">
+              <span className="text-sm text-primary flex items-center gap-1" data-testid="link-blueprints">
+                See All <ChevronRight className="w-4 h-4" />
+              </span>
+            </Link>
+          </div>
+        </section>
       </div>
+
       <NavBar />
     </div>
   );
 }
 
-function TribesList() {
+function TribesSection({ onStream }: { onStream: () => void }) {
   const { data: tribes, isLoading } = useTribes();
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold font-display">Active Tribes</h2>
-        <Link href="/tribes">
-          <span className="text-sm text-primary hover:underline cursor-pointer" data-testid="link-view-all-tribes">View All</span>
-        </Link>
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Shield className="w-5 h-5 text-purple-400" />
+          <h2 className="text-lg font-bold font-display">Tribes</h2>
+        </div>
+        <button onClick={onStream} className="text-sm text-primary flex items-center gap-1" data-testid="button-tribes-stream">
+          Stream <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
       {isLoading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="w-6 h-6 text-primary animate-spin" />
-        </div>
+        <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 text-primary animate-spin" /></div>
       ) : (
-        <div className="space-y-3">
-          {tribes?.slice(0, 5).map((tribe: any) => (
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+          {(tribes || []).map((tribe: any) => (
             <Link key={tribe.id} href={`/tribes/${tribe.id}`}>
-              <div className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors cursor-pointer" data-testid={`card-tribe-${tribe.id}`}>
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
-                  <Users className="w-5 h-5" />
+              <div className="w-[140px] shrink-0 glass-card rounded-2xl overflow-hidden cursor-pointer hover:border-purple-500/30 transition-colors" data-testid={`card-tribe-${tribe.id}`}>
+                <div className="h-20 bg-gradient-to-br from-purple-900/60 to-indigo-900/40 flex items-center justify-center">
+                  <Shield className="w-10 h-10 text-purple-400/50" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{tribe.name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{tribe.description || "A community tribe"}</p>
+                <div className="p-3">
+                  <p className="font-semibold text-sm truncate">{tribe.name}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Users className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[11px] text-muted-foreground">{Math.floor(Math.random() * 15000) + 100}</span>
+                  </div>
                 </div>
               </div>
             </Link>
           ))}
+          {(!tribes || tribes.length === 0) && (
+            <Link href="/tribes">
+              <div className="w-[140px] shrink-0 glass-card rounded-2xl p-4 flex flex-col items-center justify-center h-[130px] cursor-pointer hover:border-purple-500/30">
+                <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                <span className="text-xs text-muted-foreground">Create Tribe</span>
+              </div>
+            </Link>
+          )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
-function StreamView({ category, onBack }: { category: string; onBack: () => void }) {
-  const { data: videos, isLoading } = useVideos(undefined, category);
+function StreamView({ category, onBack, onCategoryChange }: { category: string; onBack: () => void; onCategoryChange: (c: string) => void }) {
+  const { data: videos, isLoading } = useVideos(undefined, category === "all" ? undefined : category);
   const [activeIndex, setActiveIndex] = useState(0);
-
-  const categoryInfo = categories.find((c) => c.id === category);
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-4 bg-gradient-to-b from-black/80 to-transparent">
-        <button onClick={onBack} className="p-2 rounded-full bg-white/10 backdrop-blur-md" data-testid="button-back-from-stream">
-          <ArrowLeft className="w-5 h-5 text-white" />
+      <div className="absolute top-0 left-0 right-0 z-30 p-4 space-y-3">
+        <button onClick={onBack} className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center" data-testid="button-close-stream">
+          <X className="w-5 h-5 text-white" />
         </button>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1">
-          {categories.map((cat) => (
+
+        <div className="flex gap-1 bg-black/40 backdrop-blur-md rounded-full p-1 overflow-x-auto scrollbar-hide">
+          {streamCategories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => {
-                if (cat.id !== category) {
-                  onBack();
-                  setTimeout(() => {
-                    const el = document.querySelector(`[data-testid="button-category-${cat.id}"]`);
-                    if (el) (el as HTMLButtonElement).click();
-                  }, 100);
-                }
-              }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              onClick={() => onCategoryChange(cat.id)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 cat.id === category
                   ? "bg-primary text-white"
-                  : "bg-white/10 text-white/70 hover:bg-white/20"
+                  : "text-white/70 hover:text-white"
               }`}
-              data-testid={`button-stream-tab-${cat.id}`}
+              data-testid={`stream-tab-${cat.id}`}
             >
               {cat.label}
             </button>
@@ -149,15 +229,14 @@ function StreamView({ category, onBack }: { category: string; onBack: () => void
             setActiveIndex(idx);
           }}
         >
-          {videos.map((video, index) => (
+          {videos.map((video: any, index: number) => (
             <VideoCard key={video.id} video={video} isActive={index === activeIndex} />
           ))}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-white/60 p-8 text-center">
-          {categoryInfo && <categoryInfo.icon className="w-16 h-16 mb-4 opacity-30" />}
-          <h2 className="text-xl font-bold mb-2">No {categoryInfo?.label} Content Yet</h2>
-          <p className="text-sm">Be the first to share content in this category!</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-white/50 p-8 text-center">
+          <h2 className="text-xl font-bold mb-2">No content yet</h2>
+          <p className="text-sm">Be the first to share in this category!</p>
         </div>
       )}
     </div>

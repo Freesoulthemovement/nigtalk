@@ -18,6 +18,7 @@ import ProfilePage from "@/pages/profile";
 import RadioPage from "@/pages/radio";
 import BestowalPage from "@/pages/bestowal";
 import MessagingPage from "@/pages/messaging";
+import LibraryPage from "@/pages/library";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -70,6 +71,7 @@ function Router() {
       <Route path="/radio" component={RadioPage} />
       <Route path="/bestowal" component={BestowalPage} />
       <Route path="/messages" component={MessagingPage} />
+      <Route path="/blueprints" component={LibraryPage} />
       <Route component={NotFound} />
     </Switch>
   );
