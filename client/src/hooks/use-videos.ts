@@ -1,18 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type VideoWithUser } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import type { InsertVideo } from "@shared/schema";
 
-export function useVideos(tribeId?: number) {
+export function useVideos(tribeId?: number, category?: string) {
   return useQuery({
-    queryKey: [api.videos.list.path, tribeId],
+    queryKey: ["/api/videos", tribeId, category],
     queryFn: async () => {
-      const url = new URL(api.videos.list.path, window.location.origin);
+      const url = new URL("/api/videos", window.location.origin);
       if (tribeId) url.searchParams.set("tribeId", tribeId.toString());
-      
+      if (category) url.searchParams.set("category", category);
       const res = await fetch(url.toString(), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch videos");
-      return api.videos.list.responses[200].parse(await res.json());
+      return res.json();
     },
   });
 }
@@ -23,26 +22,21 @@ export function useCreateVideo() {
 
   return useMutation({
     mutationFn: async (data: InsertVideo) => {
-      const res = await fetch(api.videos.create.path, {
+      const res = await fetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
       });
-
       if (!res.ok) throw new Error("Failed to create video");
-      return api.videos.create.responses[201].parse(await res.json());
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.videos.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
       toast({ title: "Success", description: "Video published!" });
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 }

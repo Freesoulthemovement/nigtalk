@@ -1,128 +1,106 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
-import type { Tribe, MessageWithUser } from "@shared/routes";
 import type { InsertTribe } from "@shared/schema";
 
-// List all tribes
 export function useTribes() {
   return useQuery({
-    queryKey: [api.tribes.list.path],
+    queryKey: ["/api/tribes"],
     queryFn: async () => {
-      const res = await fetch(api.tribes.list.path, { credentials: "include" });
+      const res = await fetch("/api/tribes", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch tribes");
-      return api.tribes.list.responses[200].parse(await res.json());
+      return res.json();
     },
   });
 }
 
-// Get single tribe detail
 export function useTribe(id: number) {
   return useQuery({
-    queryKey: [api.tribes.get.path, id],
+    queryKey: ["/api/tribes", id],
     queryFn: async () => {
-      const url = buildUrl(api.tribes.get.path, { id });
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(`/api/tribes/${id}`, { credentials: "include" });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch tribe");
-      return api.tribes.get.responses[200].parse(await res.json());
+      return res.json();
     },
     enabled: !!id,
   });
 }
 
-// Create a new tribe
 export function useCreateTribe() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: InsertTribe) => {
-      const res = await fetch(api.tribes.create.path, {
+      const res = await fetch("/api/tribes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
       });
-
-      if (!res.ok) {
-        if (res.status === 401) throw new Error("Unauthorized");
-        throw new Error("Failed to create tribe");
-      }
-      return api.tribes.create.responses[201].parse(await res.json());
+      if (!res.ok) throw new Error("Failed to create tribe");
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.tribes.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tribes"] });
       toast({ title: "Success", description: "Tribe created successfully" });
     },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 }
 
-// Join a tribe
 export function useJoinTribe() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (tribeId: number) => {
-      const url = buildUrl(api.tribes.join.path, { id: tribeId });
-      const res = await fetch(url, {
+      const res = await fetch(`/api/tribes/${tribeId}/join`, {
         method: "POST",
         credentials: "include",
       });
-
       if (!res.ok) throw new Error("Failed to join tribe");
-      return api.tribes.join.responses[200].parse(await res.json());
+      return res.json();
     },
     onSuccess: (_, tribeId) => {
-      queryClient.invalidateQueries({ queryKey: [api.tribes.get.path, tribeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tribes", tribeId] });
       toast({ title: "Joined!", description: "You are now a member of this tribe." });
     },
   });
 }
 
-// Get messages for a tribe (polling enabled)
 export function useTribeMessages(tribeId: number) {
   return useQuery({
-    queryKey: [api.messages.list.path, tribeId],
+    queryKey: ["/api/tribes", tribeId, "messages"],
     queryFn: async () => {
-      const url = buildUrl(api.messages.list.path, { id: tribeId });
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(`/api/tribes/${tribeId}/messages`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch messages");
-      return api.messages.list.responses[200].parse(await res.json());
+      return res.json();
     },
     enabled: !!tribeId,
-    refetchInterval: 3000, // Poll every 3 seconds as requested
+    refetchInterval: 3000,
   });
 }
 
-// Send a message
 export function useSendMessage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ tribeId, content }: { tribeId: number; content: string }) => {
-      const url = buildUrl(api.messages.create.path, { id: tribeId });
-      const res = await fetch(url, {
+    mutationFn: async ({ tribeId, content, isRadio }: { tribeId: number; content: string; isRadio?: boolean }) => {
+      const res = await fetch(`/api/tribes/${tribeId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, isRadio }),
         credentials: "include",
       });
-
       if (!res.ok) throw new Error("Failed to send message");
-      return api.messages.create.responses[201].parse(await res.json());
+      return res.json();
     },
     onSuccess: (_, { tribeId }) => {
-      queryClient.invalidateQueries({ queryKey: [api.messages.list.path, tribeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tribes", tribeId, "messages"] });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to send message", variant: "destructive" });

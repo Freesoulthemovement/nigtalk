@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertTribeSchema, insertVideoSchema, insertMessageSchema, insertCommentSchema, tribes, videos, messages, comments, tribeMembers, users } from './schema';
+import { insertTribeSchema, insertVideoSchema, insertMessageSchema, tribes, videos, messages, tribeMembers, users, userBestowals } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -60,6 +60,7 @@ export const api = {
       path: '/api/videos' as const,
       input: z.object({
         tribeId: z.coerce.number().optional(),
+        category: z.string().optional(),
       }).optional(),
       responses: {
         200: z.array(z.custom<typeof videos.$inferSelect & { user: typeof users.$inferSelect }>()),
@@ -88,11 +89,55 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/tribes/:id/messages' as const,
-      input: z.object({ content: z.string() }),
+      input: z.object({ content: z.string(), isRadio: z.boolean().optional() }),
       responses: {
         201: z.custom<typeof messages.$inferSelect>(),
         401: errorSchemas.unauthorized,
         404: errorSchemas.notFound,
+      },
+    },
+    dm: {
+      list: {
+        method: 'GET' as const,
+        path: '/api/dm/:userId' as const,
+        responses: {
+          200: z.array(z.custom<typeof messages.$inferSelect & { user: typeof users.$inferSelect }>()),
+        },
+      },
+      create: {
+        method: 'POST' as const,
+        path: '/api/dm/:userId' as const,
+        input: z.object({ content: z.string() }),
+        responses: {
+          201: z.custom<typeof messages.$inferSelect>(),
+          401: errorSchemas.unauthorized,
+        },
+      },
+      conversations: {
+        method: 'GET' as const,
+        path: '/api/dm' as const,
+        responses: {
+          200: z.array(z.custom<typeof users.$inferSelect>()),
+        },
+      },
+    },
+  },
+  bestowal: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/bestowal' as const,
+      responses: {
+        200: z.custom<typeof userBestowals.$inferSelect>(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    update: {
+      method: 'POST' as const,
+      path: '/api/bestowal' as const,
+      input: z.object({ monthlyAmount: z.string(), password: z.string() }),
+      responses: {
+        200: z.custom<typeof userBestowals.$inferSelect>(),
+        401: errorSchemas.unauthorized,
       },
     },
   },
