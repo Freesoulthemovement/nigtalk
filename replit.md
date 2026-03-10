@@ -25,10 +25,13 @@ NigTalk is a sovereign community social media platform for the Free Soul Ecclesi
 4. **Tribes** — Create/join tribes, group chat with real-time polling
 5. **Radio/Push-to-Talk** — Bluetooth Mesh mode, Online/Mesh toggle, Channels (NigTalk/Random/Mental Health), My Tribes slots, Now Tuned live card, hold-to-talk bar
 6. **Bestowal** — "Pay Attention! Creators Blessing.", date/period badge, 5 stat cards (Monthly Contribution, Creator Pool 90%, FSC, Creators Supported, Time Watched), How Bestowal Works rules, Supported Creators 0/100, Send Direct Gift, 7 Layers of Mutual Bestowal
-7. **Library/Blueprints** — Governance documents: Free Soul Charter, Constitution, PMA Agreement, Trust Indenture (verified, versioned)
-8. **Direct Messaging** — User-to-user DMs with conversation list
-9. **Video Upload** — Category-tagged video publishing
-10. **Profile** — User profile with stats, messages link, settings, logout
+7. **Library** — Governance documents: Free Soul Charter, Free Soul Living Dictionary (28+ searchable entries), Constitution, PMA Agreement, Trust Indenture (verified, versioned). Accessible from Settings → Official PMA Documents.
+8. **Blueprints** — Separate educational content hub for community PDFs/videos of designs. Accessible from Explore and /blueprints route.
+9. **Direct Messaging** — User-to-user DMs with conversation list
+10. **Video Upload** — Category-tagged content publishing with type support (camera, photo, video, audio, blueprint)
+11. **Profile** — User profile with stats, messages link, settings, logout
+12. **Settings** — Edit Profile, Add Link, Add Ministry/Charity, Donation Tracker, Official PMA Documents, Change Profile Layout, Customize Algorithm
+13. **Free Soul Flower Emblem** — SVG component with 8 purple petals and golden center, used as movement seal throughout app
 
 ## Database Schema
 - `users` — Replit Auth managed (id, email, firstName, lastName, profileImageUrl)
@@ -60,13 +63,16 @@ client/src/
     tribe-detail.tsx — Tribe chat + member management
     radio.tsx        — Push-to-talk with Bluetooth Mesh mode
     bestowal.tsx     — FSC balance + 7 layers + supported creators
-    library.tsx      — Governance documents (Blueprints)
+    library.tsx      — Governance documents + Living Dictionary
+    blueprints.tsx   — Educational content hub (PDFs/designs)
+    settings.tsx     — Profile settings and preferences
     messaging.tsx    — Direct messages
-    upload.tsx       — Video upload with category selection
+    upload.tsx       — Content upload with type support
     profile.tsx      — User profile with tabs
   components/
     nav-bar.tsx      — Bottom navigation (Explore, Radio, Upload, Bestowal, Profile)
     video-card.tsx   — Full-screen video player for stream mode
+    free-soul-emblem.tsx — Free Soul Flower SVG emblem
   hooks/
     use-auth.ts      — Auth hook
     use-tribes.ts    — Tribe CRUD + messages hooks

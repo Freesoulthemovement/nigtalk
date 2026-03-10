@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogOut, MessageCircle, Settings } from "lucide-react";
 import { Link } from "wouter";
+import { FreeSoulEmblem } from "@/components/free-soul-emblem";
 
 export default function ProfilePage() {
   const { user, logout, isLoading } = useAuth();
@@ -52,9 +53,11 @@ export default function ProfilePage() {
                 <MessageCircle className="w-4 h-4" /> Messages
               </Button>
             </Link>
-            <Button variant="outline" className="rounded-xl border-white/10 bg-white/5 px-3" data-testid="button-settings">
-              <Settings className="w-4 h-4" />
-            </Button>
+            <Link href="/settings">
+              <Button variant="outline" className="rounded-xl border-white/10 bg-white/5 px-3" data-testid="button-settings">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </Link>
             <Button variant="outline" className="rounded-xl border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 px-3" onClick={() => logout()} data-testid="button-logout">
               <LogOut className="w-4 h-4" />
             </Button>
@@ -93,12 +96,10 @@ export default function ProfilePage() {
         </Tabs>
       </div>
 
-      <div className="text-center py-4">
+      <div className="text-center py-4 flex items-center justify-center gap-2">
+        <FreeSoulEmblem className="w-5 h-5" />
         <p className="text-xs text-muted-foreground">
           NigTalk by Free Soul the Movement
-        </p>
-        <p className="text-xs mt-1">
-          <a href="mailto:nigtalksupport@freesoulthemovement" className="text-primary hover:underline" data-testid="link-profile-support">nigtalksupport@freesoulthemovement</a>
         </p>
       </div>
 

@@ -15,10 +15,12 @@ import TribesPage from "@/pages/tribes";
 import TribeDetailPage from "@/pages/tribe-detail";
 import UploadPage from "@/pages/upload";
 import ProfilePage from "@/pages/profile";
+import SettingsPage from "@/pages/settings";
 import RadioPage from "@/pages/radio";
 import BestowalPage from "@/pages/bestowal";
 import MessagingPage from "@/pages/messaging";
 import LibraryPage from "@/pages/library";
+import BlueprintsPage from "@/pages/blueprints";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -68,10 +70,12 @@ function Router() {
       <Route path="/tribes/:id" component={TribeDetailPage} />
       <Route path="/upload" component={UploadPage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/settings" component={SettingsPage} />
       <Route path="/radio" component={RadioPage} />
       <Route path="/bestowal" component={BestowalPage} />
       <Route path="/messages" component={MessagingPage} />
-      <Route path="/blueprints" component={LibraryPage} />
+      <Route path="/library" component={LibraryPage} />
+      <Route path="/blueprints" component={BlueprintsPage} />
       <Route component={NotFound} />
     </Switch>
   );
