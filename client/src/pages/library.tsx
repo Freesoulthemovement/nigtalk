@@ -11,6 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
+const dictionaryPdfUrl = "/attached_assets/88_Essential_definitions_for_sovereignty_-_How_to_kill_a_Vempi_1776206956992.pdf";
+const HOLD_MS = 450;
+
+const dictionaryPdfUrl = "/attached_assets/88_Essential_definitions_for_sovereignty_-_How_to_kill_a_Vempi_1776206956992.pdf";
+
 const documents = [
   { title: "Free Soul Charter", description: "The founding document establishing the Free Soul Ecclesiastical Movement as a sovereign spiritual body.", version: "v1.0.0", date: "2025-08-16", icon: FileText, iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
   { title: "Free Soul Living Dictionary", description: "88 Essential Definitions for Sovereignty — linguistic manual for free souls seeking truth.", version: "v1.1.1", date: "2025-10-16", icon: Book, iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", isDictionary: true },
@@ -217,7 +222,7 @@ export default function LibraryPage() {
       </div>
 
       {activeTab === "documents" && <DocumentsTab />}
-      {activeTab === "dictionary" && <DictionaryTab search={dictSearch} setSearch={setDictSearch} onSelectEntry={setSelectedEntry} />}
+      {activeTab === "dictionary" && <DictionaryTab search={dictSearch} setSearch={setDictSearch} onSelectEntry={setSelectedEntry} onOpenPdf={() => window.open(dictionaryPdfUrl, "_blank", "noopener,noreferrer")} />}
       {activeTab === "shield" && <TribalShieldTab />}
 
       <Dialog open={!!selectedEntry} onOpenChange={(o) => !o && setSelectedEntry(null)}>
@@ -231,7 +236,7 @@ export default function LibraryPage() {
                 </DialogTitle>
                 <DialogDescription>Free Soul Living Dictionary Definition</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 mt-2">
+    <div className="space-y-4 mt-2">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Official Definition</p>
                   <p className="text-sm text-foreground/70 leading-relaxed">{selectedEntry.official}</p>
@@ -243,7 +248,7 @@ export default function LibraryPage() {
                 <div className="glass-card rounded-xl p-3">
                   <p className="text-[10px] text-muted-foreground">
                     This definition is part of the Free Soul Living Dictionary — 88 Essential Definitions for Sovereignty.
-                    Tap and hold any term in the dictionary to view its full definition.
+                    Tap any term to view its definition. Hold any term to open the full PDF dictionary.
                   </p>
                 </div>
               </div>
@@ -286,7 +291,7 @@ function DocumentsTab() {
   );
 }
 
-function DictionaryTab({ search, setSearch, onSelectEntry }: { search: string; setSearch: (s: string) => void; onSelectEntry: (e: typeof dictionaryEntries[0]) => void }) {
+function DictionaryTab({ search, setSearch, onSelectEntry, onOpenPdf }: { search: string; setSearch: (s: string) => void; onSelectEntry: (e: typeof dictionaryEntries[0]) => void; onOpenPdf: () => void }) {
   const filtered = search.length >= 1
     ? dictionaryEntries.filter(e =>
       e.term.toLowerCase().includes(search.toLowerCase()) ||
@@ -326,25 +331,56 @@ function DictionaryTab({ search, setSearch, onSelectEntry }: { search: string; s
           <div className="text-center py-14 text-muted-foreground text-sm">No definitions found for "{search}"</div>
         ) : (
           filtered.map((entry) => (
-            <button key={entry.number} onClick={() => onSelectEntry(entry)} className="w-full text-left glass-card rounded-2xl p-4 space-y-2 hover:border-purple-500/20 transition-colors" data-testid={`dict-entry-${entry.number}`}>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-xs font-bold">{entry.number}</span>
-                <h3 className="font-bold text-base">{entry.term}</h3>
-                <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Official</p>
-                <p className="text-xs text-foreground/70 leading-relaxed line-clamp-1">{entry.official}</p>
-              </div>
-              <div className="border-t border-white/5 pt-1.5">
-                <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-0.5">True Definition</p>
-                <p className="text-xs text-foreground/90 leading-relaxed line-clamp-2">{entry.true_def}</p>
-              </div>
-            </button>
+            <DictionaryEntryCard key={entry.number} entry={entry} onSelectEntry={onSelectEntry} onOpenPdf={onOpenPdf} />
           ))
         )}
       </div>
     </div>
+  );
+}
+
+function DictionaryEntryCard({ entry, onSelectEntry, onOpenPdf }: { entry: typeof dictionaryEntries[0]; onSelectEntry: (e: typeof dictionaryEntries[0]) => void; onOpenPdf: () => void }) {
+  const [holdTimer, setHoldTimer] = useState<number | null>(null);
+
+  const clearHold = () => {
+    if (holdTimer) window.clearTimeout(holdTimer);
+    setHoldTimer(null);
+  };
+
+  const startHold = () => {
+    const timer = window.setTimeout(() => {
+      onOpenPdf();
+      setHoldTimer(null);
+    }, HOLD_MS);
+    setHoldTimer(timer);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectEntry(entry)}
+      onMouseDown={startHold}
+      onMouseUp={clearHold}
+      onMouseLeave={clearHold}
+      onTouchStart={startHold}
+      onTouchEnd={clearHold}
+      className="w-full text-left glass-card rounded-2xl p-4 space-y-2 hover:border-purple-500/20 transition-colors"
+      data-testid={`dict-entry-${entry.number}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-xs font-bold">{entry.number}</span>
+        <h3 className="font-bold text-base">{entry.term}</h3>
+        <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
+      </div>
+      <div>
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Official</p>
+        <p className="text-xs text-foreground/70 leading-relaxed line-clamp-1">{entry.official}</p>
+      </div>
+      <div className="border-t border-white/5 pt-1.5">
+        <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-0.5">True Definition</p>
+        <p className="text-xs text-foreground/90 leading-relaxed line-clamp-2">{entry.true_def}</p>
+      </div>
+    </button>
   );
 }
 
