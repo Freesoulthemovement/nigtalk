@@ -1,0 +1,64 @@
+In the settings make sure edit profile, add links, and all other buttons work. 
+In the library adjust dates to August 16th, 2025 for all tribal and pma documents  except for the living dictionary date that for 10-16-2025. Additionally the dictionary definitions are incomplete in numeric totality and lacking full definition let’s fix this, I like the current format of the definitions but make it so when clicking and holding on a word or searching for it, the action takes them to that place & page in the actual dictionary file pdf like a hyperlink, so they can read further with the corresponding notes. Also definitions that have scientific or blacks law definitions can show more than two in the box, (highly important) Take time and incorporate this function to all the 88 definitions and their sub definitions. For the accompanying ending documents like the ordinance of balance and the master judgement of sovereignty and deception just do a quick pop up of the pdf to the corresponding page according to the table of contents pages (pg) 14-16
+ Also treat the mathematical equations from the master judgement as the “math of default”
+
+
+In the library Build The "tribal Shield" Interface (The Action)
+Instead of a "Legal" tab, call it the "Tribal Shield" 
+* The Trigger: A member receives a "Roman or government" notice (a tax bill, a fine, or a summons).
+* The Input: They take a photo of the document. The app uses OCR (Optical Character Recognition) to pull the name of the "Agent" and the "Claim Amount."
+* The Selection: The member selects the "Charge" from the Dictionary that the agent has violated (e.g., Trespass, Usury, or Breach of fiduciary responsibility, fraud).
+
+2. Automated "Covenantal" Drafting
+The app doesn't ask them to write a letter. It says: "Confirming your tribal Kingship. Generating Affidavit of Rebuke based on the Golden Rule."
+* It pulls the Affidavit of Infinite Irrefutable Rebuke already written from dictionary 
+* It inserts the Math of Default (the proof that the system is bankrupt).
+* It attaches the Fee Schedule (your "Charges").
+
+3. The "Service" Handshake (The Proof)
+To make the Proof of Service smooth:
+* One-Tap Service: The app sends the notice via Certified Digital Mail (or generates a pre-addressed envelope they can print and drop at the post office).
+* The Tribal Archive: As soon as they hit "Send," the app displays a Golden Seal on their screen with a countdown timer (e.g., "10 Days to Cure"). This gives the member a visual sense of victory and peace.
+* Shared Strength: You could even have a "victory" feed where other Kin can "Witness" the notice, adding the weight of the whole tribe to the document.
+
+4. The "Default" Alert
+When the timer hits zero and the Agent hasn't rebutted the Truth:
+* The app sends a push notification: "Default Confirmed. The Agent has stipulated to your Truth by Silence."
+* It generates the final Notice of Default for the Kin to keep in their digital "Vault."
+
+5. Why This Works for the "Kin"
+By making it a "Social" experience, you remove the fear. When a Kin sees that 1,000 other "Kings" have successfully served the same Affidavit of Rebuke-and silenced their "Roman" debt-collectors, the Bond of the Tribe is reignited. They realize they aren't fighting a giant; they are simply correcting a "Default" in a broken system.
+
+make the "Victory Feed" legendary:
+* The "Wall of Truth": Create an additional social feed where members can post their Redacted Proof of Default. When an agent fails to rebut and hits that 30-day deadline, the Kin "rings the bell" in the app.
+* The "Charge" Counter: Show a running tally of how many "Charges" the tribe has successfully issued against the defaulting system. It turns the "Roman" extraction on its head—instead of the state collecting from the people, the Tribe is billing the state for its trespasses.
+* "Witnessing" the Rebuke: Allow other Kin to "Sign" or "Witness" a kin’s notice digitally. In common law, a Cloud of Witnesses makes a claim nearly impossible to ignore. It puts the "Roman" agent on notice that they aren't harassing one person, but an entire Covenantal Tribe of Kings.
+* Educational Gains: Each victory post can link back to the specific Dictionary terms used (e.g., Sovereignty, Usury, Trespass). This way, new Kin learn exactly how the "Math of Default" was used to win that specific case.
+
+Protecting the Kin:
+To keep it safe and "Covenantal," ensure the feed:
+1. Redacts Sensitive Info: Automatically blurs out the Kin’s home address or private trust ein numbers, but keeps the Agent's Name and the Notice of Default visible.
+2. Celebrates the Peace: Focus the energy on the Settle and Close aspect. The goal isn't just "fighting"—it's the Peace of the King that comes when the debt is nullified by the Truth.
+
+
+
+Separately When uploading general content give users more control and more ability to edit/sort/categorize the content for example if its the tribes category ask which tribes they want to post it to, additionally add a section for location and key words hashtags or tagging a blueprint. The tag a blueprint function will allow users to link blueprints to certain videos so those videos can appear under when people look at specific blueprints.
+
+When users are interacting with content replace and combine the two functions of like and repost to create the options of “vibe”or “not the vibe”. Vibe (having the symbol of the wav) and not the vibe having the symbol of the (wave canceled out.) When a users vibes with content from another user it fully supports that user, when a user vibes with the content from a frequency or a tribe the vibe function acts as an affinity boost towards similar content and a repost to other users. it has the feeling of a like so now the bare minimum support is also sharing which will provide a more caring community. When users don’t vibe with the content of a specific user it does not count towards pay attention bestowal percentage and it reduces the likeliness that more content from that specific user will show up in explore for that user who does not vibe with that content at a rate of 3%, Maxing out at 99.99%. When not vibe ratio is maxed out basically categorize the user as auto blocked where if the user does ever unblock them they only have 3 not vibes left until auto blocked is turned back on. Users should also have the ability to contribute to a comment section under posted content where users can interact with and @ each other. 
+
+Additionally make sure the customize algorithm button opens a screen or pop up with little sliders on categories to adjust for optimization of the explore feed, for example non profits with a minimum 10% threshold slider standard set at 20%, new creators minimum 5% with a standard set at 20%. Favorite or most interacted creators at standard 20% minimum 5%. Users from same tribes standard 10% minimum 5%. Boosted/promoted content 10% standard with 5% minimum. Let the user have the function to where the most common watched frequency’s make up a shared portion for the standard remaining 20% minimum 10%, design it so the user also has the ability to have 2 custom sliders one for key words for example “sovereignty, random or dance” and one for location for example “Philly (Philadelphia) or Ethiopia.” Additionally make sure the change profile layout button works give option to let users rearrange order of their uploads or thumbnails and save or compare with previously saved. 
+
+On the explore screen 
+under sports add a tribal combat section 
+Under frequency add music and dance section and a comedy section. Replace food sovereignty with food/ and agriculture 
+When creating a tribe give the option for it to be openly joined or joined with approval allow a space for the tribe to be edited and stats shown. 
+Also in the tribe messenger change the format to where it’s more like a group Instagram profile where the stewards or regular tribal members can message each other and post share and comment/ converse in unity. 
+
+Make sure all location and messages are encrypted so hackers or governments cannot see sensitive information.
+
+On the radio push to talk screen give an option to notify tribe of broadcast when talking so it notifies the corresponding tribe not overly bothering notifications place a cap 1 hour per notification and make sure it’s an additional option not mandatory. allow notifications to be optionally turned off for a specific channel. Also make sure long press to schedule and record broadcast works (3 seconds) as well as the swap tribe function. Make sure hold to talk and switch channels function works and make sure hold to talk only goes for the specific selected channel. 
+Additionally allow online video broadcast or recordings and mesh broadcasts if possible.
+
+On bestowal screen change platform fee to platform sustenance. In the bestowal settings also give option to remove bestowal, ban and/or block certain users that way if there is someone a user doesn’t want to contribute to or do not want to see anymore they don’t have to. Also From the send a direct gift button let it lead to a selection screen from most watched and recently viewed creators so it’s easier to find them also include this ability when viewing a profile as an additional way to directly give. Allow a short gift message to be typed with this function optionally. 
+
+Finally in the functionality of the free soul coin accrual, allow built in deflationary proof of work to come from actual proof of when people use a blueprint (giving them the option to review it or note if it’s useful button) also if they spend more than 10% of their time watching a certain user that one percent of the monthly transaction is distributed to the users account in free soul coin.

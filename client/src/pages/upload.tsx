@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CloudUpload, Film, Loader2, CheckCircle2, Camera, Image, Headphones, FileText } from "lucide-react";
+import { CloudUpload, Film, Loader2, CheckCircle2, Camera, Image, Headphones, FileText, MapPin, Hash, Link as LinkIcon } from "lucide-react";
 import { useCreateVideo } from "@/hooks/use-videos";
+import { useTribes } from "@/hooks/use-tribes";
 import { useLocation, useSearch } from "wouter";
 import { FreeSoulEmblem } from "@/components/free-soul-emblem";
 
@@ -25,11 +26,16 @@ export default function UploadPage() {
   const uploadType = params.get("type") || "video";
   const config = uploadTypeConfig[uploadType] || uploadTypeConfig.video;
   const { mutate: createVideo, isPending } = useCreateVideo();
+  const { data: tribes } = useTribes();
 
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(uploadType === "blueprint" ? "blueprints" : "general");
+  const [location, setLocationVal] = useState("");
+  const [hashtags, setHashtags] = useState("");
+  const [selectedTribeId, setSelectedTribeId] = useState<string>("");
+  const [linkedBlueprintId, setLinkedBlueprintId] = useState("");
 
   useEffect(() => {
     setCategory(uploadType === "blueprint" ? "blueprints" : "general");
@@ -37,7 +43,16 @@ export default function UploadPage() {
 
   const handleSubmit = () => {
     if (!uploadedUrl || !title) return;
-    createVideo({ title, description, videoUrl: uploadedUrl, category }, { onSuccess: () => setLocation("/") });
+    createVideo({
+      title,
+      description,
+      videoUrl: uploadedUrl,
+      category,
+      location: location || null,
+      hashtags: hashtags || null,
+      tribeId: selectedTribeId ? parseInt(selectedTribeId) : null,
+      linkedBlueprintId: linkedBlueprintId ? parseInt(linkedBlueprintId) : null,
+    }, { onSuccess: () => setLocation("/") });
   };
 
   const IconComponent = config.icon;
@@ -56,7 +71,7 @@ export default function UploadPage() {
             </div>
           </div>
 
-          <div className="glass-card rounded-2xl p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-6 space-y-5">
             {!uploadedUrl ? (
               <div className="border-2 border-dashed border-white/10 rounded-xl p-10 flex flex-col items-center justify-center text-center space-y-4 hover:border-purple-500/30 transition-colors">
                 <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
@@ -109,12 +124,45 @@ export default function UploadPage() {
                     <SelectItem value="tribes">Tribes</SelectItem>
                     <SelectItem value="frequencies">Frequencies</SelectItem>
                     <SelectItem value="sports">Sports</SelectItem>
+                    <SelectItem value="tribal-combat">Tribal Combat</SelectItem>
                     <SelectItem value="events">Events</SelectItem>
                     <SelectItem value="nonprofits">Nonprofits</SelectItem>
                     <SelectItem value="blueprints">Blueprints</SelectItem>
+                    <SelectItem value="music">Music & Dance</SelectItem>
+                    <SelectItem value="comedy">Comedy</SelectItem>
                     <SelectItem value="random">Random</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {category === "tribes" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Post to Tribe</Label>
+                  <Select value={selectedTribeId} onValueChange={setSelectedTribeId}>
+                    <SelectTrigger className="bg-white/5 border-white/10" data-testid="select-upload-tribe"><SelectValue placeholder="Select a tribe" /></SelectTrigger>
+                    <SelectContent>
+                      {(tribes || []).map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location</Label>
+                <Input value={location} onChange={(e) => setLocationVal(e.target.value)} placeholder="Add location (optional)" className="bg-white/5 border-white/10" data-testid="input-video-location" />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> Hashtags / Keywords</Label>
+                <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="sovereignty, freedom, truth (comma separated)" className="bg-white/5 border-white/10" data-testid="input-video-hashtags" />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5" /> Tag a Blueprint</Label>
+                <Input value={linkedBlueprintId} onChange={(e) => setLinkedBlueprintId(e.target.value)} placeholder="Blueprint ID (links this video to a blueprint)" className="bg-white/5 border-white/10" data-testid="input-video-blueprint" />
+                <p className="text-[10px] text-muted-foreground">Link this content to a blueprint so it appears when people view that blueprint.</p>
               </div>
             </div>
 

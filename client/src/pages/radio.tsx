@@ -1,6 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { NavBar } from "@/components/nav-bar";
-import { Volume2, Wifi, Bluetooth, Mic, Radio as RadioIcon, Clock, ChevronRight, RefreshCw } from "lucide-react";
+import { Volume2, Wifi, Bluetooth, Mic, Radio as RadioIcon, Clock, ChevronRight, RefreshCw, Bell, BellOff, Video, Calendar, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useTribes } from "@/hooks/use-tribes";
+import { useToast } from "@/hooks/use-toast";
+import { FreeSoulEmblem } from "@/components/free-soul-emblem";
 
 const channels = [
   { name: "NigTalk", icon: "chat", color: "border-purple-500/40 bg-purple-500/10 text-purple-300", active: true },
@@ -8,26 +13,48 @@ const channels = [
   { name: "Mental Health", icon: "brain", color: "border-green-500/40 bg-green-500/10 text-green-300", active: false },
 ];
 
-const myTribes = [
-  { name: "Food Sove...", color: "border-amber-500/40 bg-amber-500/10" },
-  { name: "Energy Fre...", color: "border-green-500/40 bg-green-500/10" },
-  { name: "Music", color: "border-cyan-500/40 bg-cyan-500/10" },
-];
-
 export default function RadioPage() {
+  const { toast } = useToast();
   const [isOnline, setIsOnline] = useState(true);
   const [meshMode, setMeshMode] = useState(true);
   const [isPTTActive, setIsPTTActive] = useState(false);
   const [activeChannel, setActiveChannel] = useState("NigTalk");
   const [peerCount] = useState(1);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showSwapDialog, setShowSwapDialog] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [videoBroadcast, setVideoBroadcast] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<number[]>([0, 1, 2]);
+  const { data: tribes } = useTribes();
+
+  const myTribes = (tribes || []).slice(0, 5);
+  const activeSlotTribes = selectedSlots.map(i => myTribes[i]).filter(Boolean);
 
   const handlePTTStart = useCallback(() => {
-    if (isOnline) setIsPTTActive(true);
+    if (!isOnline) return;
+    const timer = setTimeout(() => {
+      setShowScheduleDialog(true);
+    }, 3000);
+    setLongPressTimer(timer);
+    setIsPTTActive(true);
   }, [isOnline]);
 
   const handlePTTEnd = useCallback(() => {
+    if (longPressTimer) clearTimeout(longPressTimer);
+    setLongPressTimer(null);
     setIsPTTActive(false);
-  }, []);
+  }, [longPressTimer]);
+
+  const toggleNotifications = () => {
+    setNotificationsEnabled(!notificationsEnabled);
+    toast({
+      title: notificationsEnabled ? "Notifications Muted" : "Notifications Enabled",
+      description: notificationsEnabled
+        ? "You won't receive broadcast notifications for 1 hour."
+        : "You'll receive broadcast notifications again.",
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-screen pb-24 animate-in-fade">
@@ -42,9 +69,14 @@ export default function RadioPage() {
               </span>
             </div>
           </div>
-          <button className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center" data-testid="button-radio-volume">
-            <Volume2 className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleNotifications} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center" data-testid="button-toggle-notifications">
+              {notificationsEnabled ? <Bell className="w-5 h-5 text-green-400" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
+            </button>
+            <button className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center" data-testid="button-radio-volume">
+              <Volume2 className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -65,6 +97,16 @@ export default function RadioPage() {
             <Bluetooth className="w-4 h-4" /> Mesh
           </button>
         </div>
+
+        {!notificationsEnabled && (
+          <div className="glass-card rounded-xl p-3 border-amber-500/20 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <p className="text-xs font-medium text-amber-400">Notifications muted for 1 hour</p>
+              <p className="text-[10px] text-muted-foreground">Broadcast alerts are paused. Tap the bell to re-enable.</p>
+            </div>
+          </div>
+        )}
 
         <section>
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Channels</h3>
@@ -90,18 +132,57 @@ export default function RadioPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">My Tribes</h3>
-            <button className="text-xs text-primary flex items-center gap-1" data-testid="button-swap-tribes">
+            <button onClick={() => setShowSwapDialog(true)} className="text-xs text-primary flex items-center gap-1" data-testid="button-swap-tribes">
               <RefreshCw className="w-3 h-3" /> Swap
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground mb-2">3/3 slots · Long press to schedule</p>
+          <p className="text-[11px] text-muted-foreground mb-2">3/3 slots · Long press PTT (3s) to schedule/record</p>
           <div className="flex gap-2">
-            {myTribes.map((tribe) => (
-              <div key={tribe.name} className={`flex items-center gap-2 px-3 py-2 rounded-full border ${tribe.color} text-sm`} data-testid={`tribe-slot-${tribe.name}`}>
-                <RadioIcon className="w-4 h-4" />
+            {activeSlotTribes.length > 0 ? activeSlotTribes.map((tribe: any, idx: number) => (
+              <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-full border border-purple-500/30 bg-purple-500/10 text-sm" data-testid={`tribe-slot-${idx}`}>
+                <RadioIcon className="w-4 h-4 text-purple-400" />
                 <span className="text-sm truncate max-w-[80px]">{tribe.name}</span>
               </div>
-            ))}
+            )) : (
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-amber-500/40 bg-amber-500/10 text-sm" data-testid="tribe-slot-0">
+                  <RadioIcon className="w-4 h-4" />
+                  <span className="text-sm truncate max-w-[80px]">Food & Ag...</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-green-500/40 bg-green-500/10 text-sm" data-testid="tribe-slot-1">
+                  <RadioIcon className="w-4 h-4" />
+                  <span className="text-sm truncate max-w-[80px]">Energy Fre...</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-cyan-500/40 bg-cyan-500/10 text-sm" data-testid="tribe-slot-2">
+                  <RadioIcon className="w-4 h-4" />
+                  <span className="text-sm truncate max-w-[80px]">Music</span>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Broadcast Mode</h3>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setVideoBroadcast(false)}
+              className={`flex-1 glass-card rounded-xl p-4 flex flex-col items-center gap-2 transition-all ${!videoBroadcast ? "border-purple-500/40 bg-purple-500/10" : ""}`}
+              data-testid="button-audio-broadcast"
+            >
+              <Mic className={`w-6 h-6 ${!videoBroadcast ? "text-purple-400" : "text-muted-foreground"}`} />
+              <span className="text-xs font-medium">Audio Only</span>
+            </button>
+            <button
+              onClick={() => setVideoBroadcast(true)}
+              className={`flex-1 glass-card rounded-xl p-4 flex flex-col items-center gap-2 transition-all ${videoBroadcast ? "border-cyan-500/40 bg-cyan-500/10" : ""}`}
+              data-testid="button-video-broadcast"
+            >
+              <Video className={`w-6 h-6 ${videoBroadcast ? "text-cyan-400" : "text-muted-foreground"}`} />
+              <span className="text-xs font-medium">Video</span>
+            </button>
           </div>
         </section>
 
@@ -120,7 +201,7 @@ export default function RadioPage() {
                 <RadioIcon className="w-5 h-5 text-purple-400" />
               </div>
               <div className="flex-1">
-                <h4 className="font-bold text-sm">NigTalk</h4>
+                <h4 className="font-bold text-sm">{activeChannel}</h4>
                 <p className="text-xs text-muted-foreground">Official NigTalk announcements, updates, and community broadcasts.</p>
               </div>
             </div>
@@ -157,8 +238,8 @@ export default function RadioPage() {
       <div className="fixed bottom-20 left-0 right-0 px-5 pb-4 z-40">
         <div className="glass-card rounded-2xl p-4 flex items-center justify-between glow-purple">
           <div>
-            <h4 className="font-bold text-sm">NigTalk</h4>
-            <p className="text-xs text-muted-foreground">Hold to talk</p>
+            <h4 className="font-bold text-sm">{activeChannel}</h4>
+            <p className="text-xs text-muted-foreground">{videoBroadcast ? "Hold to broadcast video" : "Hold to talk"} · 3s long press to schedule</p>
           </div>
           <button
             onMouseDown={handlePTTStart}
@@ -176,10 +257,78 @@ export default function RadioPage() {
             }`}
             data-testid="button-push-to-talk"
           >
-            <Mic className={`w-6 h-6 ${isPTTActive ? "text-white" : "text-muted-foreground"}`} />
+            {videoBroadcast ? (
+              <Video className={`w-6 h-6 ${isPTTActive ? "text-white" : "text-muted-foreground"}`} />
+            ) : (
+              <Mic className={`w-6 h-6 ${isPTTActive ? "text-white" : "text-muted-foreground"}`} />
+            )}
           </button>
         </div>
       </div>
+
+      <Dialog open={showSwapDialog} onOpenChange={setShowSwapDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><RefreshCw className="w-5 h-5 text-primary" /> Swap Tribe Slots</DialogTitle>
+            <DialogDescription>Select up to 3 tribes for your radio slots</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 mt-2 max-h-[300px] overflow-y-auto">
+            {myTribes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <p>No tribes joined yet. Create or join a tribe first.</p>
+              </div>
+            ) : (
+              myTribes.map((tribe: any, idx: number) => (
+                <button
+                  key={tribe.id}
+                  onClick={() => {
+                    setSelectedSlots(prev => {
+                      if (prev.includes(idx)) return prev.filter(i => i !== idx);
+                      if (prev.length >= 3) return [...prev.slice(1), idx];
+                      return [...prev, idx];
+                    });
+                  }}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${selectedSlots.includes(idx) ? "bg-primary/20 border border-primary/40" : "glass-card"}`}
+                  data-testid={`swap-tribe-${tribe.id}`}
+                >
+                  <RadioIcon className={`w-5 h-5 ${selectedSlots.includes(idx) ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className="font-medium text-sm">{tribe.name}</span>
+                  {selectedSlots.includes(idx) && (
+                    <span className="ml-auto text-xs text-primary font-bold">Slot {selectedSlots.indexOf(idx) + 1}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+          <Button className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600" onClick={() => { setShowSwapDialog(false); toast({ title: "Tribe Slots Updated" }); }} data-testid="button-confirm-swap">
+            Apply
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-primary" /> Schedule Broadcast</DialogTitle>
+            <DialogDescription>Schedule or pre-record a broadcast</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <button className="glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-purple-500/30 transition-colors" data-testid="button-schedule-live">
+                <Clock className="w-6 h-6 text-purple-400" />
+                <span className="text-sm font-medium">Schedule Live</span>
+                <span className="text-[10px] text-muted-foreground">Set a time to go live</span>
+              </button>
+              <button className="glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-cyan-500/30 transition-colors" data-testid="button-pre-record">
+                <Mic className="w-6 h-6 text-cyan-400" />
+                <span className="text-sm font-medium">Pre-Record</span>
+                <span className="text-[10px] text-muted-foreground">Record now, broadcast later</span>
+              </button>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => setShowScheduleDialog(false)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <NavBar />
     </div>

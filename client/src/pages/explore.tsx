@@ -2,13 +2,15 @@ import { useState } from "react";
 import { NavBar } from "@/components/nav-bar";
 import { useVideos } from "@/hooks/use-videos";
 import { VideoCard } from "@/components/video-card";
-import { Loader2, Plus, Shield, Radio, Trophy, Globe, FileText, ChevronRight, X, Users, Search, Camera, Image, Film, Headphones, Lightbulb } from "lucide-react";
+import { Loader2, Plus, Shield, Radio, Trophy, Globe, FileText, ChevronRight, X, Users, Search, Camera, Image, Film, Headphones, Lightbulb, Swords, Music, Laugh } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTribes, useCreateTribe } from "@/hooks/use-tribes";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FreeSoulEmblem } from "@/components/free-soul-emblem";
 import type { User } from "@shared/schema";
 
@@ -16,14 +18,20 @@ const streamCategories = [
   { id: "all", label: "All" },
   { id: "tribes", label: "Tribes" },
   { id: "sports", label: "Sports" },
+  { id: "tribal-combat", label: "Tribal Combat" },
+  { id: "frequencies", label: "Frequencies" },
+  { id: "music", label: "Music & Dance" },
+  { id: "comedy", label: "Comedy" },
   { id: "events", label: "Events" },
   { id: "nonprofits", label: "Nonprofits" },
 ];
 
 const frequencies = [
   { name: "Sovereign Tech", members: 1247, color: "border-cyan-500/40 text-cyan-400" },
-  { name: "Food Sovereignty", members: 2103, color: "border-green-500/40 text-green-400" },
+  { name: "Food & Agriculture", members: 2103, color: "border-green-500/40 text-green-400" },
   { name: "Energy Freedom", members: 1856, color: "border-amber-500/40 text-amber-400" },
+  { name: "Music & Dance", members: 3412, color: "border-pink-500/40 text-pink-400" },
+  { name: "Comedy", members: 2890, color: "border-orange-500/40 text-orange-400" },
 ];
 
 const sports = [
@@ -87,7 +95,7 @@ export default function ExplorePage() {
           onCreateTribe={() => setShowCreateTribeFreq(true)}
         />
 
-        <FrequenciesSection onCreateFrequency={() => setShowCreateTribeFreq(true)} />
+        <FrequenciesSection onStream={(cat: string) => { setStreamCategory(cat); setStreamMode(true); }} onCreateFrequency={() => setShowCreateTribeFreq(true)} />
 
         <section>
           <div className="flex items-center justify-between mb-3">
@@ -111,6 +119,28 @@ export default function ExplorePage() {
                 <span className="text-sm font-medium">{s.name}</span>
               </button>
             ))}
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Swords className="w-5 h-5 text-red-400" />
+              <h2 className="text-lg font-bold font-display">Tribal Combat</h2>
+            </div>
+            <button onClick={() => { setStreamCategory("tribal-combat"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-tribal-combat-stream">
+              Stream <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="glass-card rounded-2xl p-4 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+              <Swords className="w-7 h-7 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-sm">Tribe vs Tribe</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Competitive challenges, debates, and tribal matchups. Represent your tribe in combat.</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </div>
         </section>
 
@@ -175,38 +205,22 @@ export default function ExplorePage() {
             <DialogDescription>Choose what type of content to create</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 mt-2">
-            <button
-              onClick={() => { setShowCreateMenu(false); setLocation("/upload?type=camera"); }}
-              className="glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-cyan-500/30 transition-colors"
-              data-testid="button-create-camera"
-            >
-              <Camera className="w-8 h-8 text-cyan-400" />
-              <span className="text-sm font-medium">Record Video</span>
-            </button>
-            <button
-              onClick={() => { setShowCreateMenu(false); setLocation("/upload?type=photo"); }}
-              className="glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-pink-500/30 transition-colors"
-              data-testid="button-create-photo"
-            >
-              <Image className="w-8 h-8 text-pink-400" />
-              <span className="text-sm font-medium">Upload Photo</span>
-            </button>
-            <button
-              onClick={() => { setShowCreateMenu(false); setLocation("/upload?type=video"); }}
-              className="glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-purple-500/30 transition-colors"
-              data-testid="button-create-video"
-            >
-              <Film className="w-8 h-8 text-purple-400" />
-              <span className="text-sm font-medium">Upload Video</span>
-            </button>
-            <button
-              onClick={() => { setShowCreateMenu(false); setLocation("/upload?type=audio"); }}
-              className="glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-500/30 transition-colors"
-              data-testid="button-create-audio"
-            >
-              <Headphones className="w-8 h-8 text-green-400" />
-              <span className="text-sm font-medium">Upload Audio</span>
-            </button>
+            {[
+              { type: "camera", icon: Camera, label: "Record Video", color: "cyan" },
+              { type: "photo", icon: Image, label: "Upload Photo", color: "pink" },
+              { type: "video", icon: Film, label: "Upload Video", color: "purple" },
+              { type: "audio", icon: Headphones, label: "Upload Audio", color: "green" },
+            ].map((item) => (
+              <button
+                key={item.type}
+                onClick={() => { setShowCreateMenu(false); setLocation(`/upload?type=${item.type}`); }}
+                className={`glass-card rounded-xl p-4 flex flex-col items-center gap-2 hover:border-${item.color}-500/30 transition-colors`}
+                data-testid={`button-create-${item.type}`}
+              >
+                <item.icon className={`w-8 h-8 text-${item.color}-400`} />
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
@@ -362,9 +376,14 @@ function TribesSection({ onStream, onCreateTribe }: { onStream: () => void; onCr
                 </div>
                 <div className="p-3">
                   <p className="font-semibold text-sm truncate">{tribe.name}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Users className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-[11px] text-muted-foreground">{Math.floor(Math.random() * 15000) + 100}</span>
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-[11px] text-muted-foreground">{Math.floor(Math.random() * 15000) + 100}</span>
+                    </div>
+                    {tribe.joinType === "approval" && (
+                      <span className="text-[9px] text-amber-400 font-medium">Approval</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -384,7 +403,7 @@ function TribesSection({ onStream, onCreateTribe }: { onStream: () => void; onCr
   );
 }
 
-function FrequenciesSection({ onCreateFrequency }: { onCreateFrequency: () => void }) {
+function FrequenciesSection({ onStream, onCreateFrequency }: { onStream: (cat: string) => void; onCreateFrequency: () => void }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
@@ -398,12 +417,12 @@ function FrequenciesSection({ onCreateFrequency }: { onCreateFrequency: () => vo
       </div>
       <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
         {frequencies.map((f) => (
-          <div key={f.name} className="shrink-0">
+          <button key={f.name} onClick={() => onStream(f.name.toLowerCase().includes("music") ? "music" : f.name.toLowerCase().includes("comedy") ? "comedy" : "frequencies")} className="shrink-0">
             <div className={`px-4 py-2 rounded-full border ${f.color} bg-white/5 text-sm font-medium whitespace-nowrap`} data-testid={`chip-frequency-${f.name}`}>
               {f.name}
             </div>
             <p className="text-[11px] text-muted-foreground text-center mt-1.5">{f.members.toLocaleString()} members</p>
-          </div>
+          </button>
         ))}
       </div>
     </section>
@@ -414,13 +433,14 @@ function CreateTribeFrequencyDialog({ open, onOpenChange }: { open: boolean; onO
   const [tab, setTab] = useState<"tribe" | "frequency">("tribe");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [joinType, setJoinType] = useState("open");
   const { mutate: createTribe, isPending } = useCreateTribe();
 
   const handleCreate = () => {
     if (!name.trim()) return;
     if (tab === "tribe") {
-      createTribe({ name, description }, {
-        onSuccess: () => { setName(""); setDescription(""); onOpenChange(false); }
+      createTribe({ name, description, joinType } as any, {
+        onSuccess: () => { setName(""); setDescription(""); setJoinType("open"); onOpenChange(false); }
       });
     }
   };
@@ -471,6 +491,22 @@ function CreateTribeFrequencyDialog({ open, onOpenChange }: { open: boolean; onO
             className="bg-white/5 border-white/10"
             data-testid="input-create-description"
           />
+
+          {tab === "tribe" && (
+            <div className="space-y-2">
+              <Label className="text-sm">Join Type</Label>
+              <Select value={joinType} onValueChange={setJoinType}>
+                <SelectTrigger className="bg-white/5 border-white/10" data-testid="select-join-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open — Anyone can join</SelectItem>
+                  <SelectItem value="approval">Approval — Requires approval to join</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button
             onClick={handleCreate}
             disabled={!name.trim() || isPending}
@@ -521,18 +557,20 @@ function StreamView({ category, onBack, onCategoryChange }: { category: string; 
         <div
           className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
           onScroll={(e) => {
-            const idx = Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight);
+            const target = e.currentTarget;
+            const idx = Math.round(target.scrollTop / target.clientHeight);
             setActiveIndex(idx);
           }}
         >
-          {videos.map((video: any, index: number) => (
-            <VideoCard key={video.id} video={video} isActive={index === activeIndex} />
+          {videos.map((video: any, idx: number) => (
+            <VideoCard key={video.id} video={video} isActive={idx === activeIndex} />
           ))}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-white/50 p-8 text-center">
-          <h2 className="text-xl font-bold mb-2">No content yet</h2>
-          <p className="text-sm">Be the first to share in this category!</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+          <Film className="w-16 h-16 text-muted-foreground/30 mb-4" />
+          <h3 className="font-bold text-lg mb-2">No content yet</h3>
+          <p className="text-sm text-muted-foreground">Be the first to share content in this category.</p>
         </div>
       )}
     </div>

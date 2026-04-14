@@ -16,7 +16,6 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   registerObjectStorageRoutes(app);
 
-  // Tribes
   app.get("/api/tribes", async (req, res) => {
     const tribes = await storage.getTribes();
     res.json(tribes);
@@ -25,8 +24,11 @@ export async function registerRoutes(
   app.post("/api/tribes", isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     try {
+      const tribeCount = await storage.getUserTribeCount(userId);
+      if (tribeCount >= 8) return res.status(400).json({ message: "Maximum 8 tribes per account" });
       const input = insertTribeSchema.parse(req.body);
       const tribe = await storage.createTribe({ ...input, createdBy: userId });
+      await storage.joinTribe(userId, tribe.id);
       res.status(201).json(tribe);
     } catch (error) {
       res.status(400).json({ message: "Invalid input" });
@@ -40,6 +42,14 @@ export async function registerRoutes(
     res.json({ ...tribe, members });
   });
 
+  app.patch("/api/tribes/:id", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const tribe = await storage.getTribe(Number(req.params.id));
+    if (!tribe || tribe.createdBy !== userId) return res.status(403).json({ message: "Not authorized" });
+    const updated = await storage.updateTribe(tribe.id, req.body);
+    res.json(updated);
+  });
+
   app.post("/api/tribes/:id/join", isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     const tribeId = Number(req.params.id);
@@ -47,7 +57,6 @@ export async function registerRoutes(
     res.json(member);
   });
 
-  // Videos
   app.get("/api/videos", async (req, res) => {
     const tribeId = req.query.tribeId ? Number(req.query.tribeId) : undefined;
     const category = req.query.category as string | undefined;
@@ -66,7 +75,6 @@ export async function registerRoutes(
     }
   });
 
-  // Tribe Messages
   app.get("/api/tribes/:id/messages", async (req, res) => {
     const msgs = await storage.getMessages(Number(req.params.id));
     res.json(msgs.reverse());
@@ -90,7 +98,6 @@ export async function registerRoutes(
     }
   });
 
-  // Direct Messages
   app.get("/api/dm", isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     const conversations = await storage.getDMConversations(userId);
@@ -117,13 +124,21 @@ export async function registerRoutes(
     }
   });
 
-  // Users list (for DM user search)
   app.get("/api/users", isAuthenticated, async (req, res) => {
     const allUsers = await storage.getAllUsers();
     res.json(allUsers);
   });
 
-  // Bestowal
+  app.patch("/api/users/me", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    try {
+      const updated = await storage.updateUser(userId, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update profile" });
+    }
+  });
+
   app.get("/api/bestowal", isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     let bestowal = await storage.getBestowal(userId);
@@ -145,6 +160,80 @@ export async function registerRoutes(
     } catch (error) {
       res.status(400).json({ message: "Invalid input" });
     }
+  });
+
+  app.post("/api/vibes", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    try {
+      const schema = z.object({ videoId: z.number(), isVibe: z.boolean() });
+      const input = schema.parse(req.body);
+      const vibe = await storage.toggleVibe(userId, input.videoId, input.isVibe);
+      res.json(vibe);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.get("/api/vibes/:videoId", async (req, res) => {
+    const videoId = Number(req.params.videoId);
+    const vibeData = await storage.getVideoVibes(videoId);
+    res.json(vibeData);
+  });
+
+  app.post("/api/blocked-users", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const { blockedUserId } = req.body;
+    await storage.blockUser(userId, blockedUserId);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/blocked-users/:blockedUserId", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const blockedUserId = String(req.params.blockedUserId);
+    await storage.unblockUser(userId, blockedUserId);
+    res.json({ success: true });
+  });
+
+  app.get("/api/blocked-users", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const blocked = await storage.getBlockedUsers(userId);
+    res.json(blocked);
+  });
+
+  app.post("/api/shield-cases", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    try {
+      const shieldCase = await storage.createShieldCase({ ...req.body, userId });
+      res.status(201).json(shieldCase);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.get("/api/shield-cases", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const mine = req.query.mine === "true";
+    const cases = await storage.getShieldCases(mine ? userId : undefined);
+    res.json(cases);
+  });
+
+  app.patch("/api/shield-cases/:id", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    try {
+      const cases = await storage.getShieldCases(userId);
+      const caseId = Number(req.params.id);
+      const ownsCase = cases.some(c => c.id === caseId);
+      if (!ownsCase) return res.status(403).json({ message: "Not authorized to modify this case" });
+      const updated = await storage.updateShieldCase(caseId, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.post("/api/shield-cases/:id/witness", isAuthenticated, async (req, res) => {
+    await storage.witnessShieldCase(Number(req.params.id));
+    res.json({ success: true });
   });
 
   return httpServer;
