@@ -14,8 +14,6 @@ import { useAuth } from "@/hooks/use-auth";
 const dictionaryPdfUrl = "/attached_assets/88_Essential_definitions_for_sovereignty_-_How_to_kill_a_Vempi_1776206956992.pdf";
 const HOLD_MS = 450;
 
-const dictionaryPdfUrl = "/attached_assets/88_Essential_definitions_for_sovereignty_-_How_to_kill_a_Vempi_1776206956992.pdf";
-
 const documents = [
   { title: "Free Soul Charter", description: "The founding document establishing the Free Soul Ecclesiastical Movement as a sovereign spiritual body.", version: "v1.0.0", date: "2025-08-16", icon: FileText, iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
   { title: "Free Soul Living Dictionary", description: "88 Essential Definitions for Sovereignty — linguistic manual for free souls seeking truth.", version: "v1.1.1", date: "2025-10-16", icon: Book, iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", isDictionary: true },
