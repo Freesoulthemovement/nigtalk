@@ -31,20 +31,36 @@ export default function RadioPage() {
   const myTribes = (tribes || []).slice(0, 5);
   const activeSlotTribes = selectedSlots.map(i => myTribes[i]).filter(Boolean);
 
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const handlePTTStart = useCallback(() => {
     if (!isOnline) return;
+    if (longPressTimerRef.current) return;
     const timer = setTimeout(() => {
       setShowScheduleDialog(true);
+      setIsPTTActive(false);
+      longPressTimerRef.current = null;
     }, 3000);
+    longPressTimerRef.current = timer;
     setLongPressTimer(timer);
     setIsPTTActive(true);
   }, [isOnline]);
 
   const handlePTTEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
     if (longPressTimer) clearTimeout(longPressTimer);
     setLongPressTimer(null);
     setIsPTTActive(false);
   }, [longPressTimer]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
 
   const toggleNotifications = () => {
     setNotificationsEnabled(!notificationsEnabled);

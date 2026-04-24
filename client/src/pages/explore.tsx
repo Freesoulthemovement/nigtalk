@@ -2,7 +2,8 @@ import { useState } from "react";
 import { NavBar } from "@/components/nav-bar";
 import { useVideos } from "@/hooks/use-videos";
 import { VideoCard } from "@/components/video-card";
-import { Loader2, Plus, Shield, Radio, Trophy, Globe, FileText, ChevronRight, X, Users, Search, Camera, Image, Film, Headphones, Lightbulb, Swords, Music, Laugh } from "lucide-react";
+import { Loader2, Plus, Shield, Radio, Trophy, Globe, FileText, ChevronRight, X, Users, Search, Camera, Image, Film, Headphones, Lightbulb, Swords, Music, Laugh, Flame } from "lucide-react";
+import { FaHandFist } from "react-icons/fa6";
 import { Link, useLocation } from "wouter";
 import { useTribes, useCreateTribe } from "@/hooks/use-tribes";
 import { useQuery } from "@tanstack/react-query";
@@ -19,6 +20,7 @@ const streamCategories = [
   { id: "tribes", label: "Tribes" },
   { id: "sports", label: "Sports" },
   { id: "tribal-combat", label: "Tribal Combat" },
+  { id: "hearth-builders", label: "Hearth Builders" },
   { id: "frequencies", label: "Frequencies" },
   { id: "music", label: "Music & Dance" },
   { id: "comedy", label: "Comedy" },
@@ -125,7 +127,7 @@ export default function ExplorePage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Swords className="w-5 h-5 text-red-400" />
+              <FaHandFist className="w-5 h-5 text-amber-400" />
               <h2 className="text-lg font-bold font-display">Tribal Combat</h2>
             </div>
             <button onClick={() => { setStreamCategory("tribal-combat"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-tribal-combat-stream">
@@ -133,12 +135,34 @@ export default function ExplorePage() {
             </button>
           </div>
           <div className="glass-card rounded-2xl p-4 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
-              <Swords className="w-7 h-7 text-red-400" />
+            <div className="w-14 h-14 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <FaHandFist className="w-7 h-7 text-amber-400" />
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-sm">Tribe vs Tribe</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Competitive challenges, debates, and tribal matchups. Represent your tribe in combat.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tribal combat shall be mutually accepted for building the strength of the tribe. Never to be forced but used as a tool for practice of restraint and balance.</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-orange-400" />
+              <h2 className="text-lg font-bold font-display">Hearth Builders</h2>
+            </div>
+            <button onClick={() => { setStreamCategory("hearth-builders"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-hearth-builders-stream">
+              Stream <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="glass-card rounded-2xl p-4 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center shrink-0">
+              <Flame className="w-7 h-7 text-orange-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-sm">Sovereign Hearths</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Rebuilding communities with freedom and purpose.</p>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </div>

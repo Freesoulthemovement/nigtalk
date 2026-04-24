@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Shield, FileText, BookOpen, Scale, ChevronRight, Search, X, Book, Camera, Send, Clock, Bell, Eye, Award, Gavel, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,34 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
 const dictionaryPdfUrl = "/free-soul-living-dictionary.pdf";
-const HOLD_MS = 450;
+const HOLD_MS = 3000;
+
+const dictionaryPageMap: Record<string, number> = {
+  "0": 17, "0a": 17, "1": 20, "1a": 20, "2": 22, "3": 23, "3a": 24, "4": 25, "4a": 26,
+  "5": 30, "6": 30, "6a": 33, "6b": 33, "6c": 35, "6d": 35, "7": 37, "7a": 38, "8": 39, "8a": 39,
+  "9": 39, "9a": 40, "9b": 43, "9c": 46, "10": 47, "10a": 49, "11": 54, "11a": 56, "11b": 56, "11c": 57,
+  "12": 61, "12a": 62, "13": 72, "13a": 74, "13b": 75, "13c": 78, "13d": 89, "14": 89, "14a": 93, "14b": 94,
+  "15": 95, "16": 98, "16a": 99, "17": 99, "18": 100, "19": 101, "20": 102, "21": 103, "22": 103,
+  "23": 103, "23a": 103, "23b": 104, "24": 108, "25": 108, "26": 108, "27": 109, "28": 109, "29": 110,
+  "30": 111, "31": 112, "32": 113, "33": 114, "33a": 118, "33b": 119, "33c": 120, "34": 120, "34a": 121,
+  "35": 123, "36": 124, "37": 126, "38": 126, "39": 126, "40": 126, "41": 126, "41a": 132, "42": 134,
+  "43": 134, "43a": 135, "43b": 135, "44": 135, "45": 139, "46": 139, "47": 140, "48": 156, "49": 156,
+  "49a": 157, "50": 157, "51": 157, "51a": 159, "51b": 160, "51c": 160, "52": 162, "53": 163, "54": 163,
+  "55": 163, "56": 163, "56a": 164, "57": 166, "58": 166, "58a": 167, "58b": 170, "58c": 173, "58d": 176,
+  "58e": 178, "58f": 182, "58g": 182, "59": 187, "60": 187, "61": 187, "62": 187, "63": 187, "63a": 187,
+  "64": 187, "65": 188, "66": 188, "66a": 191, "66b": 191, "66c": 191, "66d": 191, "66e": 191, "67": 192,
+  "68": 192, "69": 192, "70": 192, "71": 192, "72": 192, "72a": 193, "72b": 193, "73": 194, "74": 194,
+  "75": 194, "75a": 195, "75b": 196, "75c": 196, "75d": 199, "75e": 199, "75f": 199, "76": 200, "76a": 201,
+  "77": 202, "77a": 202, "78": 204, "79": 204, "80": 204, "81": 204, "82": 204, "83": 205, "84": 205,
+  "85": 208, "86": 208, "87": 209, "87a": 211, "88": 211, "88a": 212, "88b": 213, "88c": 214, "88d": 216,
+  "88e": 219, "88f": 219, "88g": 221, "88h": 222,
+};
+
+function openDictionaryAt(entryNumber?: string) {
+  const page = entryNumber ? dictionaryPageMap[entryNumber] : undefined;
+  const url = page ? `${dictionaryPdfUrl}#page=${page}` : dictionaryPdfUrl;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
 const documents = [
   { title: "Free Soul Charter", description: "The founding document establishing the Free Soul Ecclesiastical Movement as a sovereign spiritual body.", version: "v1.0.0", date: "2025-08-16", icon: FileText, iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
@@ -221,7 +248,7 @@ export default function LibraryPage() {
       </div>
 
       {activeTab === "documents" && <DocumentsTab />}
-      {activeTab === "dictionary" && <DictionaryTab search={dictSearch} setSearch={setDictSearch} onSelectEntry={setSelectedEntry} onOpenPdf={() => window.open(dictionaryPdfUrl, "_blank", "noopener,noreferrer")} />}
+      {activeTab === "dictionary" && <DictionaryTab search={dictSearch} setSearch={setDictSearch} onSelectEntry={setSelectedEntry} onOpenPdf={openDictionaryAt} />}
       {activeTab === "shield" && <TribalShieldTab />}
 
       <Dialog open={!!selectedEntry} onOpenChange={(o) => !o && setSelectedEntry(null)}>
@@ -290,7 +317,7 @@ function DocumentsTab() {
   );
 }
 
-function DictionaryTab({ search, setSearch, onSelectEntry, onOpenPdf }: { search: string; setSearch: (s: string) => void; onSelectEntry: (e: typeof dictionaryEntries[0]) => void; onOpenPdf: () => void }) {
+function DictionaryTab({ search, setSearch, onSelectEntry, onOpenPdf }: { search: string; setSearch: (s: string) => void; onSelectEntry: (e: typeof dictionaryEntries[0]) => void; onOpenPdf: (entryNumber?: string) => void }) {
   const filtered = search.length >= 1
     ? dictionaryEntries.filter(e =>
       e.term.toLowerCase().includes(search.toLowerCase()) ||
@@ -338,32 +365,65 @@ function DictionaryTab({ search, setSearch, onSelectEntry, onOpenPdf }: { search
   );
 }
 
-function DictionaryEntryCard({ entry, onSelectEntry, onOpenPdf }: { entry: typeof dictionaryEntries[0]; onSelectEntry: (e: typeof dictionaryEntries[0]) => void; onOpenPdf: () => void }) {
-  const [holdTimer, setHoldTimer] = useState<number | null>(null);
+function DictionaryEntryCard({ entry, onSelectEntry, onOpenPdf }: { entry: typeof dictionaryEntries[0]; onSelectEntry: (e: typeof dictionaryEntries[0]) => void; onOpenPdf: (entryNumber?: string) => void }) {
+  const holdTimerRef = useRef<number | null>(null);
+  const triggeredRef = useRef(false);
+  const clickResetRef = useRef<number | null>(null);
+  const [holding, setHolding] = useState(false);
 
   const clearHold = () => {
-    if (holdTimer) window.clearTimeout(holdTimer);
-    setHoldTimer(null);
+    if (holdTimerRef.current) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    setHolding(false);
+    if (triggeredRef.current) {
+      if (clickResetRef.current) window.clearTimeout(clickResetRef.current);
+      clickResetRef.current = window.setTimeout(() => {
+        triggeredRef.current = false;
+        clickResetRef.current = null;
+      }, 400);
+    }
   };
 
   const startHold = () => {
-    const timer = window.setTimeout(() => {
-      onOpenPdf();
-      setHoldTimer(null);
+    if (holdTimerRef.current) return;
+    triggeredRef.current = false;
+    setHolding(true);
+    holdTimerRef.current = window.setTimeout(() => {
+      triggeredRef.current = true;
+      onOpenPdf(entry.number);
+      holdTimerRef.current = null;
+      setHolding(false);
     }, HOLD_MS);
-    setHoldTimer(timer);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
+      if (clickResetRef.current) window.clearTimeout(clickResetRef.current);
+    };
+  }, []);
+
+  const handleClick = () => {
+    if (triggeredRef.current) {
+      triggeredRef.current = false;
+      return;
+    }
+    onSelectEntry(entry);
   };
 
   return (
     <button
       type="button"
-      onClick={() => onSelectEntry(entry)}
+      onClick={handleClick}
       onMouseDown={startHold}
       onMouseUp={clearHold}
       onMouseLeave={clearHold}
       onTouchStart={startHold}
       onTouchEnd={clearHold}
-      className="w-full text-left glass-card rounded-2xl p-4 space-y-2 hover:border-purple-500/20 transition-colors"
+      onTouchCancel={clearHold}
+      className={`w-full text-left glass-card rounded-2xl p-4 space-y-2 transition-all ${holding ? "border-amber-400/60 scale-[0.99] shadow-lg shadow-amber-500/10" : "hover:border-purple-500/20"}`}
       data-testid={`dict-entry-${entry.number}`}
     >
       <div className="flex items-center gap-2">
