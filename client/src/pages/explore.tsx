@@ -19,7 +19,7 @@ const streamCategories = [
   { id: "all", label: "All" },
   { id: "tribes", label: "Tribes" },
   { id: "sports", label: "Sports" },
-  { id: "tribal-combat", label: "Tribal Combat" },
+  { id: "mbs-training", label: "Mind Body Soul" },
   { id: "hearth-builders", label: "Hearth Builders" },
   { id: "frequencies", label: "Frequencies" },
   { id: "music", label: "Music & Dance" },
@@ -128,9 +128,9 @@ export default function ExplorePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <FaHandFist className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg font-bold font-display">Tribal Combat</h2>
+              <h2 className="text-lg font-bold font-display">Mind Body Soul — MBS Training</h2>
             </div>
-            <button onClick={() => { setStreamCategory("tribal-combat"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-tribal-combat-stream">
+            <button onClick={() => { setStreamCategory("mbs-training"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-mbs-training-stream">
               Stream <ChevronRight className="w-4 h-4" />
             </button>
           </div>
