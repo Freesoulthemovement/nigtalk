@@ -139,8 +139,8 @@ export default function ExplorePage() {
               <FaHandFist className="w-7 h-7 text-amber-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-sm">Tribe vs Tribe</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Tribal combat shall be mutually accepted for building the strength of the tribe. Never to be forced but used as a tool for practice of restraint and balance.</p>
+              <h3 className="font-bold text-sm">MBS Training</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">The daily path of strengthening the Mind, Body, and Soul.</p>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </div>
