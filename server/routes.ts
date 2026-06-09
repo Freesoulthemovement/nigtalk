@@ -248,12 +248,16 @@ export async function registerRoutes(
   app.get("/api/proposals", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any).claims.sub;
-      const tribeId = req.query.tribeId ? Number(req.query.tribeId) : undefined;
+      const userTribeIds = await storage.getUserTribeIds(userId);
       const status = (req.query.status as string) || undefined;
       const scope = (req.query.scope as string) || undefined;
-      let userTribeIds: number[] = [];
-      if (scope === "tribe" || !scope) {
-        userTribeIds = await storage.getUserTribeIds(userId);
+      let tribeId: number | undefined;
+      if (req.query.tribeId) {
+        tribeId = Number(req.query.tribeId);
+        // Enforce membership: reject if user is not a member of the requested tribe
+        if (!userTribeIds.includes(tribeId)) {
+          return res.status(403).json({ message: "Not a member of this tribe" });
+        }
       }
       const proposals = await storage.getProposals({ tribeId, status, scope, userTribeIds });
       res.json(proposals);
@@ -266,6 +270,13 @@ export async function registerRoutes(
     const userId = (req.user as any).claims.sub;
     try {
       const input = insertProposalSchema.parse(req.body);
+      // If tribe-scoped, require membership before allowing creation
+      if (input.tribeId != null) {
+        const memberTribeIds = await storage.getUserTribeIds(userId);
+        if (!memberTribeIds.includes(input.tribeId)) {
+          return res.status(403).json({ message: "You must be a member of this tribe to propose" });
+        }
+      }
       const proposal = await storage.createProposal({ ...input, proposerId: userId, status: "active" });
       res.status(201).json(proposal);
     } catch (error) {
@@ -342,9 +353,12 @@ export async function registerRoutes(
       if (!proposal) return res.status(404).json({ message: "Proposal not found" });
       if (proposal.status === "nullified") return res.status(400).json({ message: "Cannot fund a nullified proposal" });
       const bestowal = await storage.getBestowal(userId);
-      const available = parseFloat(bestowal?.monthlyAmount || "0");
-      if (parseFloat(amount) > available) {
-        return res.status(400).json({ message: "Amount exceeds available bestowal balance" });
+      const monthly = parseFloat(bestowal?.monthlyAmount || "0");
+      // Cumulative check: sum all existing allocations by this user across all proposals
+      const totalAllocated = await storage.getTotalAllocatedByUser(userId);
+      const available = monthly - totalAllocated;
+      if (parseFloat(amount) > available || available <= 0) {
+        return res.status(400).json({ message: `Amount exceeds available bestowal commitment ($${available.toFixed(2)} remaining)` });
       }
       const allocation = await storage.addFundingAllocation(proposalId, userId, amount);
       res.status(201).json(allocation);
