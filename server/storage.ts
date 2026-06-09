@@ -50,7 +50,10 @@ function computeNullification(supportCount: number, nullifyCount: number) {
   const total = supportCount + nullifyCount;
   if (total === 0) return { pct: 0, isNullified: false };
   const pct = (nullifyCount / total) * 100;
-  return { pct, isNullified: pct >= 66.67 };
+  // Use exact integer ratio to avoid floating-point edge cases at exactly 2/3:
+  // 2 nullify / 3 total → nullifyCount*3=6, total*2=6 → 6>=6 → true (correctly nullified)
+  const isNullified = nullifyCount * 3 >= total * 2;
+  return { pct, isNullified };
 }
 
 export class DatabaseStorage implements IStorage {

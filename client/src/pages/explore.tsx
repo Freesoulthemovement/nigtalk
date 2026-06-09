@@ -578,10 +578,18 @@ function ImportantEventsSection() {
                 className={`w-[165px] shrink-0 glass-card rounded-2xl p-4 text-left ${isNullified ? "border-red-500/20" : ""}`}
                 data-testid={`card-event-proposal-${p.id}`}
               >
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${catColor}`}>
-                  {p.category.replace(/-/g, " ")}
-                </span>
-                <h3 className="font-semibold text-xs mt-1 mb-2 line-clamp-2 leading-snug">{p.title}</h3>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${catColor}`}>
+                    {p.category.replace(/-/g, " ")}
+                  </span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border capitalize ${
+                    p.status === "nullified" ? "text-red-400 bg-red-500/10 border-red-500/30" :
+                    p.status === "funded" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
+                    p.status === "expired" ? "text-gray-400 bg-gray-500/10 border-gray-500/30" :
+                    "text-green-400 bg-green-500/10 border-green-500/30"
+                  }`}>{p.status}</span>
+                </div>
+                <h3 className="font-semibold text-xs mb-2 line-clamp-2 leading-snug">{p.title}</h3>
                 {isNullified && (
                   <div className="flex items-center gap-1 mb-1.5">
                     <AlertTriangle className="w-3 h-3 text-red-400" />
