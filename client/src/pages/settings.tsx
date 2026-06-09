@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, User, LinkIcon, Building, HandCoins, FileText, LayoutDashboard, SlidersHorizontal, ChevronRight, X, Camera, Save } from "lucide-react";
+import { ArrowLeft, User, LinkIcon, Building, HandCoins, FileText, LayoutDashboard, SlidersHorizontal, ChevronRight, X, Camera, Save, Vote } from "lucide-react";
 import { FreeSoulEmblem } from "@/components/free-soul-emblem";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,12 @@ const settingsItems: { section: string; items: SettingsItem[] }[] = [
     section: "Documents & Resources",
     items: [
       { icon: FileText, label: "Official PMA Documents", desc: "Free Soul Charter, Living Dictionary, Constitution, PMA Agreement, Trust Indenture", href: "/library", color: "text-pink-400 bg-pink-500/10 border-pink-500/20", isLink: true },
+    ],
+  },
+  {
+    section: "Community",
+    items: [
+      { icon: Vote, label: "Governance & Voting", desc: "Propose, support, nullify, and fund community initiatives", href: "/governance", color: "text-violet-400 bg-violet-500/10 border-violet-500/20", isLink: true },
     ],
   },
   {

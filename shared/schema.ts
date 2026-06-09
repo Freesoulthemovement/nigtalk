@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -97,53 +97,75 @@ export const tribalShieldCases = pgTable("tribal_shield_cases", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Governance ──────────────────────────────────────────────────────────────
+
+export const proposals = pgTable("proposals", {
+  id: serial("id").primaryKey(),
+  proposerId: varchar("proposer_id").references(() => users.id).notNull(),
+  tribeId: integer("tribe_id").references(() => tribes.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull().default("other"),
+  requestedFunding: decimal("requested_funding", { precision: 12, scale: 2 }),
+  status: text("status").notNull().default("active"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const proposalVotes = pgTable("proposal_votes", {
+  id: serial("id").primaryKey(),
+  proposalId: integer("proposal_id").references(() => proposals.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  voteType: text("vote_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  uniq: unique().on(t.proposalId, t.userId),
+}));
+
+export const proposalSuggestions = pgTable("proposal_suggestions", {
+  id: serial("id").primaryKey(),
+  proposalId: integer("proposal_id").references(() => proposals.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  suggestionType: text("suggestion_type").notNull().default("add"),
+  content: text("content").notNull(),
+  effectAnalysis: text("effect_analysis"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const fundingAllocations = pgTable("funding_allocations", {
+  id: serial("id").primaryKey(),
+  proposalId: integer("proposal_id").references(() => proposals.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Relations ────────────────────────────────────────────────────────────────
+
 export const tribesRelations = relations(tribes, ({ one, many }) => ({
   members: many(tribeMembers),
   messages: many(messages),
   videos: many(videos),
-  creator: one(users, {
-    fields: [tribes.createdBy],
-    references: [users.id],
-  }),
+  proposals: many(proposals),
+  creator: one(users, { fields: [tribes.createdBy], references: [users.id] }),
 }));
 
 export const tribeMembersRelations = relations(tribeMembers, ({ one }) => ({
-  tribe: one(tribes, {
-    fields: [tribeMembers.tribeId],
-    references: [tribes.id],
-  }),
-  user: one(users, {
-    fields: [tribeMembers.userId],
-    references: [users.id],
-  }),
+  tribe: one(tribes, { fields: [tribeMembers.tribeId], references: [tribes.id] }),
+  user: one(users, { fields: [tribeMembers.userId], references: [users.id] }),
 }));
 
 export const videosRelations = relations(videos, ({ one, many }) => ({
-  user: one(users, {
-    fields: [videos.userId],
-    references: [users.id],
-  }),
+  user: one(users, { fields: [videos.userId], references: [users.id] }),
   comments: many(comments),
   vibes: many(vibes),
-  tribe: one(tribes, {
-    fields: [videos.tribeId],
-    references: [tribes.id],
-  }),
+  tribe: one(tribes, { fields: [videos.tribeId], references: [tribes.id] }),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
-  sender: one(users, {
-    fields: [messages.senderId],
-    references: [users.id],
-  }),
-  receiver: one(users, {
-    fields: [messages.receiverId],
-    references: [users.id],
-  }),
-  tribe: one(tribes, {
-    fields: [messages.tribeId],
-    references: [tribes.id],
-  }),
+  sender: one(users, { fields: [messages.senderId], references: [users.id] }),
+  receiver: one(users, { fields: [messages.receiverId], references: [users.id] }),
+  tribe: one(tribes, { fields: [messages.tribeId], references: [tribes.id] }),
 }));
 
 export const vibesRelations = relations(vibes, ({ one }) => ({
@@ -151,10 +173,37 @@ export const vibesRelations = relations(vibes, ({ one }) => ({
   video: one(videos, { fields: [vibes.videoId], references: [videos.id] }),
 }));
 
+export const proposalsRelations = relations(proposals, ({ one, many }) => ({
+  proposer: one(users, { fields: [proposals.proposerId], references: [users.id] }),
+  tribe: one(tribes, { fields: [proposals.tribeId], references: [tribes.id] }),
+  votes: many(proposalVotes),
+  suggestions: many(proposalSuggestions),
+  allocations: many(fundingAllocations),
+}));
+
+export const proposalVotesRelations = relations(proposalVotes, ({ one }) => ({
+  proposal: one(proposals, { fields: [proposalVotes.proposalId], references: [proposals.id] }),
+  user: one(users, { fields: [proposalVotes.userId], references: [users.id] }),
+}));
+
+export const proposalSuggestionsRelations = relations(proposalSuggestions, ({ one }) => ({
+  proposal: one(proposals, { fields: [proposalSuggestions.proposalId], references: [proposals.id] }),
+  user: one(users, { fields: [proposalSuggestions.userId], references: [users.id] }),
+}));
+
+export const fundingAllocationsRelations = relations(fundingAllocations, ({ one }) => ({
+  proposal: one(proposals, { fields: [fundingAllocations.proposalId], references: [proposals.id] }),
+  user: one(users, { fields: [fundingAllocations.userId], references: [users.id] }),
+}));
+
+// ── Insert schemas & types ───────────────────────────────────────────────────
+
 export const insertTribeSchema = createInsertSchema(tribes).omit({ id: true, createdAt: true, createdBy: true });
 export const insertVideoSchema = createInsertSchema(videos).omit({ id: true, createdAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, senderId: true });
 export const insertBestowalSchema = createInsertSchema(userBestowals).omit({ id: true, updatedAt: true, userId: true });
+export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, proposerId: true, status: true });
+export const insertProposalSuggestionSchema = createInsertSchema(proposalSuggestions).omit({ id: true, createdAt: true, userId: true, proposalId: true });
 
 export type Tribe = typeof tribes.$inferSelect;
 export type InsertTribe = z.infer<typeof insertTribeSchema>;
@@ -165,3 +214,8 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type UserBestowal = typeof userBestowals.$inferSelect;
 export type Vibe = typeof vibes.$inferSelect;
 export type TribalShieldCase = typeof tribalShieldCases.$inferSelect;
+export type Proposal = typeof proposals.$inferSelect;
+export type ProposalVote = typeof proposalVotes.$inferSelect;
+export type ProposalSuggestion = typeof proposalSuggestions.$inferSelect;
+export type FundingAllocation = typeof fundingAllocations.$inferSelect;
+export type InsertProposal = z.infer<typeof insertProposalSchema>;

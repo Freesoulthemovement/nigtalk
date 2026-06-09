@@ -21,6 +21,7 @@ import BestowalPage from "@/pages/bestowal";
 import MessagingPage from "@/pages/messaging";
 import LibraryPage from "@/pages/library";
 import BlueprintsPage from "@/pages/blueprints";
+import GovernancePage from "@/pages/governance";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -76,6 +77,7 @@ function Router() {
       <Route path="/messages" component={MessagingPage} />
       <Route path="/library" component={LibraryPage} />
       <Route path="/blueprints" component={BlueprintsPage} />
+      <Route path="/governance" component={GovernancePage} />
       <Route component={NotFound} />
     </Switch>
   );

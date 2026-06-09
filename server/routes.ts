@@ -5,7 +5,7 @@ import { setupAuth } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { isAuthenticated } from "./replit_integrations/auth";
-import { insertTribeSchema, insertVideoSchema } from "@shared/schema";
+import { insertTribeSchema, insertVideoSchema, insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -234,6 +234,105 @@ export async function registerRoutes(
   app.post("/api/shield-cases/:id/witness", isAuthenticated, async (req, res) => {
     await storage.witnessShieldCase(Number(req.params.id));
     res.json({ success: true });
+  });
+
+  // ── Governance ─────────────────────────────────────────────────────────────
+
+  app.get("/api/proposals", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const tribeId = req.query.tribeId ? Number(req.query.tribeId) : undefined;
+      const status = (req.query.status as string) || undefined;
+      const scope = (req.query.scope as string) || undefined;
+      let userTribeIds: number[] = [];
+      if (scope === "tribe" || !scope) {
+        userTribeIds = await storage.getUserTribeIds(userId);
+      }
+      const proposals = await storage.getProposals({ tribeId, status, scope, userTribeIds });
+      res.json(proposals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch proposals" });
+    }
+  });
+
+  app.post("/api/proposals", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    try {
+      const input = insertProposalSchema.parse(req.body);
+      const proposal = await storage.createProposal({ ...input, proposerId: userId, status: "active" });
+      res.status(201).json(proposal);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.get("/api/proposals/:id", isAuthenticated, async (req, res) => {
+    const proposal = await storage.getProposal(Number(req.params.id));
+    if (!proposal) return res.status(404).json({ message: "Proposal not found" });
+    const userId = (req.user as any).claims.sub;
+    const myVote = await storage.getUserVoteOnProposal(proposal.id, userId);
+    res.json({ ...proposal, myVote: myVote?.voteType || null });
+  });
+
+  app.post("/api/proposals/:id/vote", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const proposalId = Number(req.params.id);
+    try {
+      const schema = z.object({ voteType: z.enum(["support", "nullify"]) });
+      const { voteType } = schema.parse(req.body);
+      await storage.upsertVote(proposalId, userId, voteType);
+      const updated = await storage.getProposal(proposalId);
+      const myVote = await storage.getUserVoteOnProposal(proposalId, userId);
+      res.json({ ...updated, myVote: myVote?.voteType || null });
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.delete("/api/proposals/:id/vote", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const proposalId = Number(req.params.id);
+    await storage.removeVote(proposalId, userId);
+    const updated = await storage.getProposal(proposalId);
+    res.json({ ...updated, myVote: null });
+  });
+
+  app.post("/api/proposals/:id/suggest", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const proposalId = Number(req.params.id);
+    try {
+      const schema = z.object({
+        suggestionType: z.enum(["add", "remove"]),
+        content: z.string().min(1),
+        effectAnalysis: z.string().optional(),
+      });
+      const input = schema.parse(req.body);
+      const suggestion = await storage.addSuggestion({ ...input, proposalId, userId });
+      res.status(201).json(suggestion);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.post("/api/proposals/:id/fund", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const proposalId = Number(req.params.id);
+    try {
+      const schema = z.object({ amount: z.string().regex(/^\d+(\.\d{1,2})?$/) });
+      const { amount } = schema.parse(req.body);
+      const proposal = await storage.getProposal(proposalId);
+      if (!proposal) return res.status(404).json({ message: "Proposal not found" });
+      if (proposal.status === "nullified") return res.status(400).json({ message: "Cannot fund a nullified proposal" });
+      const bestowal = await storage.getBestowal(userId);
+      const available = parseFloat(bestowal?.monthlyAmount || "0");
+      if (parseFloat(amount) > available) {
+        return res.status(400).json({ message: "Amount exceeds available bestowal balance" });
+      }
+      const allocation = await storage.addFundingAllocation(proposalId, userId, amount);
+      res.status(201).json(allocation);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input" });
+    }
   });
 
   return httpServer;

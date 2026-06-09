@@ -1,4 +1,4 @@
-import { users, tribes, tribeMembers, videos, messages, userBestowals, vibes, blockedUsers, tribalShieldCases, type User, type Tribe, type Video, type Message, type UserBestowal, type Vibe, type TribalShieldCase } from "@shared/schema";
+import { users, tribes, tribeMembers, videos, messages, userBestowals, vibes, blockedUsers, tribalShieldCases, proposals, proposalVotes, proposalSuggestions, fundingAllocations, type User, type Tribe, type Video, type Message, type UserBestowal, type Vibe, type TribalShieldCase, type Proposal, type ProposalVote, type ProposalSuggestion, type FundingAllocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
@@ -12,6 +12,7 @@ export interface IStorage {
   joinTribe(userId: string, tribeId: number): Promise<any>;
   getTribeMembers(tribeId: number): Promise<any[]>;
   getUserTribeCount(userId: string): Promise<number>;
+  getUserTribeIds(userId: string): Promise<number[]>;
   createVideo(video: any): Promise<Video>;
   getVideos(tribeId?: number, category?: string): Promise<any[]>;
   createMessage(msg: any): Promise<Message>;
@@ -32,6 +33,23 @@ export interface IStorage {
   getShieldCases(userId?: string): Promise<TribalShieldCase[]>;
   updateShieldCase(id: number, data: any): Promise<TribalShieldCase>;
   witnessShieldCase(caseId: number): Promise<void>;
+  createProposal(data: any): Promise<Proposal>;
+  getProposals(opts: { tribeId?: number; status?: string; scope?: string; userTribeIds?: number[] }): Promise<any[]>;
+  getProposal(id: number): Promise<any | undefined>;
+  upsertVote(proposalId: number, userId: string, voteType: string): Promise<void>;
+  removeVote(proposalId: number, userId: string): Promise<void>;
+  getUserVoteOnProposal(proposalId: number, userId: string): Promise<ProposalVote | undefined>;
+  addSuggestion(data: any): Promise<ProposalSuggestion>;
+  getSuggestions(proposalId: number): Promise<any[]>;
+  addFundingAllocation(proposalId: number, userId: string, amount: string): Promise<FundingAllocation>;
+  getUserAllocatedFunds(proposalId: number, userId: string): Promise<string>;
+}
+
+function computeNullification(supportCount: number, nullifyCount: number) {
+  const total = supportCount + nullifyCount;
+  if (total === 0) return { pct: 0, isNullified: false };
+  const pct = (nullifyCount / total) * 100;
+  return { pct, isNullified: pct >= 66.67 };
 }
 
 export class DatabaseStorage implements IStorage {
@@ -86,6 +104,11 @@ export class DatabaseStorage implements IStorage {
   async getUserTribeCount(userId: string): Promise<number> {
     const result = await db.select({ cnt: count() }).from(tribes).where(eq(tribes.createdBy, userId));
     return result[0]?.cnt || 0;
+  }
+
+  async getUserTribeIds(userId: string): Promise<number[]> {
+    const rows = await db.select({ tribeId: tribeMembers.tribeId }).from(tribeMembers).where(eq(tribeMembers.userId, userId));
+    return rows.map(r => r.tribeId);
   }
 
   async createVideo(video: any): Promise<Video> {
@@ -235,6 +258,142 @@ export class DatabaseStorage implements IStorage {
 
   async witnessShieldCase(caseId: number): Promise<void> {
     await db.update(tribalShieldCases).set({ witnessCount: sql`${tribalShieldCases.witnessCount} + 1` }).where(eq(tribalShieldCases.id, caseId));
+  }
+
+  // ── Governance ────────────────────────────────────────────────────────────
+
+  async createProposal(data: any): Promise<Proposal> {
+    const [created] = await db.insert(proposals).values(data).returning();
+    return created;
+  }
+
+  async getProposals(opts: { tribeId?: number; status?: string; scope?: string; userTribeIds?: number[] }): Promise<any[]> {
+    const rows = await db.select().from(proposals).orderBy(desc(proposals.createdAt));
+
+    const filtered = rows.filter(p => {
+      if (opts.status && opts.status !== "all" && p.status !== opts.status) return false;
+      if (opts.tribeId != null) return p.tribeId === opts.tribeId;
+      if (opts.scope === "platform") return p.tribeId === null;
+      if (opts.scope === "tribe" && opts.userTribeIds?.length) {
+        return p.tribeId !== null && opts.userTribeIds.includes(p.tribeId!);
+      }
+      return true;
+    });
+
+    return Promise.all(filtered.map(async (p) => {
+      const votes = await db.select().from(proposalVotes).where(eq(proposalVotes.proposalId, p.id));
+      const supportCount = votes.filter(v => v.voteType === "support").length;
+      const nullifyCount = votes.filter(v => v.voteType === "nullify").length;
+      const { pct, isNullified } = computeNullification(supportCount, nullifyCount);
+
+      let status = p.status;
+      if (isNullified && status === "active") {
+        await db.update(proposals).set({ status: "nullified" }).where(eq(proposals.id, p.id));
+        status = "nullified";
+      } else if (!isNullified && status === "nullified") {
+        await db.update(proposals).set({ status: "active" }).where(eq(proposals.id, p.id));
+        status = "active";
+      }
+
+      const [proposer] = await db.select().from(users).where(eq(users.id, p.proposerId));
+      let tribe: Tribe | undefined;
+      if (p.tribeId) {
+        const [t] = await db.select().from(tribes).where(eq(tribes.id, p.tribeId));
+        tribe = t;
+      }
+
+      return { ...p, status, supportCount, nullifyCount, nullifyPct: pct, proposer, tribe };
+    }));
+  }
+
+  async getProposal(id: number): Promise<any | undefined> {
+    const [p] = await db.select().from(proposals).where(eq(proposals.id, id));
+    if (!p) return undefined;
+
+    const votes = await db.select().from(proposalVotes).where(eq(proposalVotes.proposalId, id));
+    const suggRows = await db.select().from(proposalSuggestions).where(eq(proposalSuggestions.proposalId, id)).orderBy(desc(proposalSuggestions.createdAt));
+    const allocs = await db.select().from(fundingAllocations).where(eq(fundingAllocations.proposalId, id));
+
+    const supportCount = votes.filter(v => v.voteType === "support").length;
+    const nullifyCount = votes.filter(v => v.voteType === "nullify").length;
+    const { pct, isNullified } = computeNullification(supportCount, nullifyCount);
+
+    let status = p.status;
+    if (isNullified && status === "active") {
+      await db.update(proposals).set({ status: "nullified" }).where(eq(proposals.id, id));
+      status = "nullified";
+    }
+
+    const suggestionsWithUsers = await Promise.all(suggRows.map(async (s) => {
+      const [u] = await db.select().from(users).where(eq(users.id, s.userId));
+      return { ...s, user: u };
+    }));
+
+    return { ...p, status, supportCount, nullifyCount, nullifyPct: pct, votes, suggestions: suggestionsWithUsers, allocations: allocs };
+  }
+
+  async upsertVote(proposalId: number, userId: string, voteType: string): Promise<void> {
+    const existing = await db.select().from(proposalVotes).where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.userId, userId)));
+    if (existing.length > 0) {
+      await db.update(proposalVotes).set({ voteType }).where(eq(proposalVotes.id, existing[0].id));
+    } else {
+      await db.insert(proposalVotes).values({ proposalId, userId, voteType });
+    }
+    const allVotes = await db.select().from(proposalVotes).where(eq(proposalVotes.proposalId, proposalId));
+    const s = allVotes.filter(v => v.voteType === "support").length;
+    const n = allVotes.filter(v => v.voteType === "nullify").length;
+    const { isNullified } = computeNullification(s, n);
+    if (isNullified) {
+      await db.update(proposals).set({ status: "nullified" }).where(eq(proposals.id, proposalId));
+    } else {
+      const [p] = await db.select().from(proposals).where(eq(proposals.id, proposalId));
+      if (p?.status === "nullified") {
+        await db.update(proposals).set({ status: "active" }).where(eq(proposals.id, proposalId));
+      }
+    }
+  }
+
+  async removeVote(proposalId: number, userId: string): Promise<void> {
+    await db.delete(proposalVotes).where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.userId, userId)));
+    const allVotes = await db.select().from(proposalVotes).where(eq(proposalVotes.proposalId, proposalId));
+    const s = allVotes.filter(v => v.voteType === "support").length;
+    const n = allVotes.filter(v => v.voteType === "nullify").length;
+    const { isNullified } = computeNullification(s, n);
+    if (!isNullified) {
+      const [p] = await db.select().from(proposals).where(eq(proposals.id, proposalId));
+      if (p?.status === "nullified") {
+        await db.update(proposals).set({ status: "active" }).where(eq(proposals.id, proposalId));
+      }
+    }
+  }
+
+  async getUserVoteOnProposal(proposalId: number, userId: string): Promise<ProposalVote | undefined> {
+    const [v] = await db.select().from(proposalVotes).where(and(eq(proposalVotes.proposalId, proposalId), eq(proposalVotes.userId, userId)));
+    return v;
+  }
+
+  async addSuggestion(data: any): Promise<ProposalSuggestion> {
+    const [created] = await db.insert(proposalSuggestions).values(data).returning();
+    return created;
+  }
+
+  async getSuggestions(proposalId: number): Promise<any[]> {
+    const rows = await db.select().from(proposalSuggestions).where(eq(proposalSuggestions.proposalId, proposalId)).orderBy(desc(proposalSuggestions.createdAt));
+    return Promise.all(rows.map(async (s) => {
+      const [u] = await db.select().from(users).where(eq(users.id, s.userId));
+      return { ...s, user: u };
+    }));
+  }
+
+  async addFundingAllocation(proposalId: number, userId: string, amount: string): Promise<FundingAllocation> {
+    const [created] = await db.insert(fundingAllocations).values({ proposalId, userId, amount }).returning();
+    return created;
+  }
+
+  async getUserAllocatedFunds(proposalId: number, userId: string): Promise<string> {
+    const rows = await db.select().from(fundingAllocations).where(and(eq(fundingAllocations.proposalId, proposalId), eq(fundingAllocations.userId, userId)));
+    const total = rows.reduce((sum, r) => sum + parseFloat(r.amount || "0"), 0);
+    return total.toFixed(2);
   }
 }
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavBar } from "@/components/nav-bar";
 import { useVideos } from "@/hooks/use-videos";
 import { VideoCard } from "@/components/video-card";
-import { Loader2, Plus, Shield, Radio, Trophy, Globe, FileText, ChevronRight, X, Users, Search, Camera, Image, Film, Headphones, Lightbulb, Swords, Music, Laugh, Flame } from "lucide-react";
+import { Loader2, Plus, Shield, Radio, Trophy, Globe, FileText, ChevronRight, X, Users, Search, Camera, Image, Film, Headphones, Lightbulb, Swords, Music, Laugh, Flame, Vote, AlertTriangle } from "lucide-react";
 import { FaHandFist } from "react-icons/fa6";
 import { Link, useLocation } from "wouter";
 import { useTribes, useCreateTribe } from "@/hooks/use-tribes";
@@ -42,10 +42,14 @@ const sports = [
   { name: "Baseball", icon: Trophy },
 ];
 
-const events = [
-  { title: "Global Climate Summit 2025", tag: "Politics" },
-  { title: "Wildfire Relief Efforts", tag: "Disasters" },
-];
+const PROPOSAL_CAT_COLORS: Record<string, string> = {
+  "emergency": "text-red-400",
+  "hearth-building": "text-orange-400",
+  "seeds-crops": "text-green-400",
+  "blueprint-materials": "text-amber-400",
+  "platform-change": "text-cyan-400",
+  "other": "text-purple-400",
+};
 
 export default function ExplorePage() {
   const [streamMode, setStreamMode] = useState(false);
@@ -167,25 +171,7 @@ export default function ExplorePage() {
           </div>
         </section>
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-lg font-bold font-display">Important Events</h2>
-            </div>
-            <button onClick={() => { setStreamCategory("events"); setStreamMode(true); }} className="text-sm text-primary flex items-center gap-1" data-testid="button-events-stream">
-              Stream <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex gap-3">
-            {events.map((e) => (
-              <div key={e.title} className="flex-1 glass-card rounded-2xl p-4" data-testid={`card-event-${e.tag}`}>
-                <h3 className="font-semibold text-sm mb-2">{e.title}</h3>
-                <span className="text-xs text-muted-foreground">{e.tag}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+        <ImportantEventsSection />
 
         <section>
           <div className="flex items-center justify-between mb-3">
@@ -539,6 +525,83 @@ function CreateTribeFrequencyDialog({ open, onOpenChange }: { open: boolean; onO
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ImportantEventsSection() {
+  const [, setLocation] = useLocation();
+
+  const { data: proposals = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/proposals", "explore"],
+    queryFn: async () => {
+      const res = await fetch("/api/proposals?status=active", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const active = (proposals as any[]).slice(0, 4);
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Globe className="w-5 h-5 text-muted-foreground" />
+          <h2 className="text-lg font-bold font-display">Important Events</h2>
+        </div>
+        <Link href="/governance">
+          <span className="text-sm text-primary flex items-center gap-1" data-testid="link-governance-propose">
+            Propose <Vote className="w-4 h-4" />
+          </span>
+        </Link>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
+      ) : active.length === 0 ? (
+        <div className="glass-card rounded-2xl p-4 text-center">
+          <p className="text-sm text-muted-foreground">No active proposals.</p>
+          <Link href="/governance">
+            <span className="text-xs text-primary mt-1 block underline">Be the first to propose</span>
+          </Link>
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+          {active.map((p: any) => {
+            const catColor = PROPOSAL_CAT_COLORS[p.category] || "text-purple-400";
+            const isNullified = p.status === "nullified";
+            const total = p.supportCount + p.nullifyCount;
+            const nullifyPct = total > 0 ? (p.nullifyCount / total) * 100 : 0;
+            return (
+              <button
+                key={p.id}
+                onClick={() => setLocation("/governance")}
+                className={`w-[165px] shrink-0 glass-card rounded-2xl p-4 text-left ${isNullified ? "border-red-500/20" : ""}`}
+                data-testid={`card-event-proposal-${p.id}`}
+              >
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${catColor}`}>
+                  {p.category.replace(/-/g, " ")}
+                </span>
+                <h3 className="font-semibold text-xs mt-1 mb-2 line-clamp-2 leading-snug">{p.title}</h3>
+                {isNullified && (
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <AlertTriangle className="w-3 h-3 text-red-400" />
+                    <span className="text-[10px] text-red-400 font-medium">Nullified</span>
+                  </div>
+                )}
+                <div className="flex rounded-full overflow-hidden h-1.5 bg-white/5">
+                  <div className="bg-green-500" style={{ width: `${100 - Math.min(nullifyPct, 100)}%` }} />
+                  <div className="bg-red-500" style={{ width: `${Math.min(nullifyPct, 100)}%` }} />
+                </div>
+                <div className="flex justify-between mt-1 text-[9px] text-muted-foreground">
+                  <span>{p.supportCount} ✓</span>
+                  <span>{p.nullifyCount} ✗</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
