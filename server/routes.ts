@@ -303,6 +303,10 @@ export async function registerRoutes(
       if (!canAccess) return res.status(404).json({ message: "Proposal not found" });
       const schema = z.object({ voteType: z.enum(["support", "nullify"]) });
       const { voteType } = schema.parse(req.body);
+      const proposal = await storage.getProposal(proposalId);
+      if (!proposal) return res.status(404).json({ message: "Proposal not found" });
+      if (proposal.status === "expired") return res.status(400).json({ message: "Cannot vote on an expired proposal" });
+      if (proposal.status === "nullified") return res.status(400).json({ message: "Cannot vote on a nullified proposal" });
       await storage.upsertVote(proposalId, userId, voteType);
       const updated = await storage.getProposal(proposalId);
       const myVote = await storage.getUserVoteOnProposal(proposalId, userId);
@@ -352,6 +356,7 @@ export async function registerRoutes(
       const proposal = await storage.getProposal(proposalId);
       if (!proposal) return res.status(404).json({ message: "Proposal not found" });
       if (proposal.status === "nullified") return res.status(400).json({ message: "Cannot fund a nullified proposal" });
+      if (proposal.status === "expired") return res.status(400).json({ message: "Cannot fund an expired proposal" });
       const bestowal = await storage.getBestowal(userId);
       const monthly = parseFloat(bestowal?.monthlyAmount || "0");
       // Cumulative check: sum all existing allocations by this user across all proposals

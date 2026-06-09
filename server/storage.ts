@@ -273,26 +273,22 @@ export class DatabaseStorage implements IStorage {
 
   async getProposals(opts: { tribeId?: number; status?: string; scope?: string; userTribeIds?: number[] }): Promise<any[]> {
     const rows = await db.select().from(proposals).orderBy(desc(proposals.createdAt));
-
     const userTribes = opts.userTribeIds ?? [];
+    const now = new Date();
 
-    const filtered = rows.filter(p => {
-      // Status filter applied first
-      if (opts.status && opts.status !== "all" && p.status !== opts.status) return false;
-      // Explicit tribe filter
+    // Step 1: Scope filter (access control, no status dependency)
+    const scopeFiltered = rows.filter(p => {
       if (opts.tribeId != null) return p.tribeId === opts.tribeId;
-      // Scope-based filters
       if (opts.scope === "platform") return p.tribeId === null;
       if (opts.scope === "tribe") {
-        // No memberships → no tribe proposals
         if (!userTribes.length) return false;
         return p.tribeId !== null && userTribes.includes(p.tribeId!);
       }
-      // Default: platform-wide OR in user's tribes only (no cross-tribe exposure)
       return p.tribeId === null || (userTribes.length > 0 && userTribes.includes(p.tribeId!));
     });
 
-    return Promise.all(filtered.map(async (p) => {
+    // Step 2: Compute derived status for each, persist changes, THEN apply status filter
+    const enriched = await Promise.all(scopeFiltered.map(async (p) => {
       const [votes, suggRows] = await Promise.all([
         db.select().from(proposalVotes).where(eq(proposalVotes.proposalId, p.id)),
         db.select().from(proposalSuggestions).where(eq(proposalSuggestions.proposalId, p.id)).orderBy(desc(proposalSuggestions.createdAt)),
@@ -301,13 +297,18 @@ export class DatabaseStorage implements IStorage {
       const nullifyCount = votes.filter(v => v.voteType === "nullify").length;
       const { pct, isNullified } = computeNullification(supportCount, nullifyCount);
 
-      let status = p.status;
-      if (isNullified && status === "active") {
+      // Derive status: expiry beats nullification; nullification beats active
+      let derivedStatus = p.status;
+      if (p.expiresAt && new Date(p.expiresAt) <= now && derivedStatus === "active") {
+        derivedStatus = "expired";
+        await db.update(proposals).set({ status: "expired" }).where(eq(proposals.id, p.id));
+      } else if (isNullified && derivedStatus === "active") {
+        derivedStatus = "nullified";
         await db.update(proposals).set({ status: "nullified" }).where(eq(proposals.id, p.id));
-        status = "nullified";
-      } else if (!isNullified && status === "nullified") {
+      } else if (!isNullified && derivedStatus === "nullified") {
+        // Votes shifted back below threshold — reactivate
+        derivedStatus = "active";
         await db.update(proposals).set({ status: "active" }).where(eq(proposals.id, p.id));
-        status = "active";
       }
 
       const [proposer] = await db.select().from(users).where(eq(users.id, p.proposerId));
@@ -316,15 +317,19 @@ export class DatabaseStorage implements IStorage {
         const [t] = await db.select().from(tribes).where(eq(tribes.id, p.tribeId));
         tribe = t;
       }
-
-      // Enrich suggestions with user info for collapsible display
       const suggestions = await Promise.all(suggRows.map(async (s) => {
         const [u] = await db.select().from(users).where(eq(users.id, s.userId));
         return { ...s, user: u };
       }));
 
-      return { ...p, status, supportCount, nullifyCount, nullifyPct: pct, proposer, tribe, suggestions };
+      return { ...p, status: derivedStatus, supportCount, nullifyCount, nullifyPct: pct, proposer, tribe, suggestions };
     }));
+
+    // Step 3: Apply status filter against derived status (correct order)
+    if (opts.status && opts.status !== "all") {
+      return enriched.filter(p => p.status === opts.status);
+    }
+    return enriched;
   }
 
   // Check if a user has visibility access to a proposal (platform-wide or in their tribes)
@@ -348,11 +353,18 @@ export class DatabaseStorage implements IStorage {
     const supportCount = votes.filter(v => v.voteType === "support").length;
     const nullifyCount = votes.filter(v => v.voteType === "nullify").length;
     const { pct, isNullified } = computeNullification(supportCount, nullifyCount);
+    const now = new Date();
 
     let status = p.status;
-    if (isNullified && status === "active") {
+    if (p.expiresAt && new Date(p.expiresAt) <= now && status === "active") {
+      await db.update(proposals).set({ status: "expired" }).where(eq(proposals.id, id));
+      status = "expired";
+    } else if (isNullified && status === "active") {
       await db.update(proposals).set({ status: "nullified" }).where(eq(proposals.id, id));
       status = "nullified";
+    } else if (!isNullified && status === "nullified") {
+      await db.update(proposals).set({ status: "active" }).where(eq(proposals.id, id));
+      status = "active";
     }
 
     const suggestionsWithUsers = await Promise.all(suggRows.map(async (s) => {
