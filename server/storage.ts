@@ -44,6 +44,7 @@ export interface IStorage {
   addFundingAllocation(proposalId: number, userId: string, amount: string): Promise<FundingAllocation>;
   getUserAllocatedFunds(proposalId: number, userId: string): Promise<string>;
   getTotalAllocatedByUser(userId: string): Promise<number>;
+  getUserVotesForProposals(userId: string, proposalIds: number[]): Promise<Record<number, string>>;
 }
 
 function computeNullification(supportCount: number, nullifyCount: number) {
@@ -442,6 +443,20 @@ export class DatabaseStorage implements IStorage {
   async getTotalAllocatedByUser(userId: string): Promise<number> {
     const rows = await db.select().from(fundingAllocations).where(eq(fundingAllocations.userId, userId));
     return rows.reduce((sum, r) => sum + parseFloat(r.amount || "0"), 0);
+  }
+
+  async getUserVotesForProposals(userId: string, proposalIds: number[]): Promise<Record<number, string>> {
+    if (!proposalIds.length) return {};
+    const rows = await db.select().from(proposalVotes).where(
+      and(eq(proposalVotes.userId, userId))
+    );
+    const result: Record<number, string> = {};
+    for (const row of rows) {
+      if (proposalIds.includes(row.proposalId)) {
+        result[row.proposalId] = row.voteType;
+      }
+    }
+    return result;
   }
 }
 

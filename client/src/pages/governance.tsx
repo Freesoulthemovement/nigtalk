@@ -64,6 +64,8 @@ function ProposalCard({ proposal, onRefresh }: { proposal: any; onRefresh: () =>
 
   const catInfo = getCatInfo(proposal.category);
   const isNullified = proposal.status === "nullified";
+  const isExpired = proposal.status === "expired";
+  const votingLocked = isNullified || isExpired;
   const myVote = proposal.myVote;
 
   const voteMutation = useMutation({
@@ -133,16 +135,16 @@ function ProposalCard({ proposal, onRefresh }: { proposal: any; onRefresh: () =>
       <div className="flex gap-2 mt-3">
         <button
           onClick={() => voteMutation.mutate("support")}
-          disabled={voteMutation.isPending || isNullified}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors border ${myVote === "support" ? "bg-green-500/20 border-green-500/40 text-green-400" : "bg-white/5 border-white/10 text-muted-foreground hover:border-green-500/30"}`}
+          disabled={voteMutation.isPending || votingLocked}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors border ${votingLocked ? "opacity-40 cursor-not-allowed bg-white/3 border-white/5 text-muted-foreground" : myVote === "support" ? "bg-green-500/20 border-green-500/40 text-green-400" : "bg-white/5 border-white/10 text-muted-foreground hover:border-green-500/30"}`}
           data-testid={`button-support-${proposal.id}`}
         >
           <ThumbsUp className="w-3.5 h-3.5" /> Support
         </button>
         <button
           onClick={() => voteMutation.mutate("nullify")}
-          disabled={voteMutation.isPending}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors border ${myVote === "nullify" ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-white/5 border-white/10 text-muted-foreground hover:border-red-500/30"}`}
+          disabled={voteMutation.isPending || votingLocked}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors border ${votingLocked ? "opacity-40 cursor-not-allowed bg-white/3 border-white/5 text-muted-foreground" : myVote === "nullify" ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-white/5 border-white/10 text-muted-foreground hover:border-red-500/30"}`}
           data-testid={`button-nullify-${proposal.id}`}
         >
           <ThumbsDown className="w-3.5 h-3.5" /> Nullify
@@ -154,7 +156,7 @@ function ProposalCard({ proposal, onRefresh }: { proposal: any; onRefresh: () =>
         >
           <Lightbulb className="w-3.5 h-3.5" /> Suggest
         </button>
-        {!isNullified && (
+        {!votingLocked && (
           <button
             onClick={() => setShowFund(true)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors border bg-white/5 border-white/10 text-amber-400 hover:border-amber-500/30"

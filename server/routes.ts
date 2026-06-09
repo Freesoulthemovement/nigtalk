@@ -260,7 +260,10 @@ export async function registerRoutes(
         }
       }
       const proposals = await storage.getProposals({ tribeId, status, scope, userTribeIds });
-      res.json(proposals);
+      // Enrich each proposal with the caller's vote for correct toggle behavior on list cards
+      const myVotes = await storage.getUserVotesForProposals(userId, proposals.map((p: any) => p.id));
+      const enriched = proposals.map((p: any) => ({ ...p, myVote: myVotes[p.id] || null }));
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch proposals" });
     }
