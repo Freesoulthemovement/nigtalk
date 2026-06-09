@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useEffect, useRef } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -259,6 +259,18 @@ function NewProposalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const [category, setCategory] = useState("other");
   const [requestedFunding, setRequestedFunding] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [scope, setScope] = useState<"platform" | "tribe">("platform");
+  const [tribeId, setTribeId] = useState<string>("");
+
+  const { data: userTribes = [] } = useQuery<any[]>({
+    queryKey: ["/api/tribes/mine"],
+    queryFn: async () => {
+      const res = await fetch("/api/tribes/mine", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: open,
+  });
 
   const mutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/proposals", data),
@@ -266,16 +278,21 @@ function NewProposalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       toast({ title: "Proposal Submitted" });
       qc.invalidateQueries({ queryKey: ["/api/proposals"] });
       onOpenChange(false);
-      setTitle(""); setDescription(""); setCategory("other"); setRequestedFunding(""); setExpiresAt("");
+      setTitle(""); setDescription(""); setCategory("other"); setRequestedFunding(""); setExpiresAt(""); setScope("platform"); setTribeId("");
     },
     onError: () => toast({ title: "Error", description: "Could not submit proposal", variant: "destructive" }),
   });
 
   const handleSubmit = () => {
     if (!title.trim() || !description.trim()) return;
+    if (scope === "tribe" && !tribeId) {
+      toast({ title: "Select a tribe", description: "Choose which tribe this proposal is for", variant: "destructive" });
+      return;
+    }
     const data: any = { title, description, category };
     if (requestedFunding) data.requestedFunding = parseFloat(requestedFunding).toFixed(2);
     if (expiresAt) data.expiresAt = new Date(expiresAt).toISOString();
+    if (scope === "tribe" && tribeId) data.tribeId = Number(tribeId);
     mutation.mutate(data);
   };
 
@@ -287,6 +304,42 @@ function NewProposalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <DialogDescription>Submit a community proposal for support, funding, or governance action</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 mt-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Scope</Label>
+            <div className="flex gap-2">
+              {(["platform", "tribe"] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => { setScope(s); setTribeId(""); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium border transition-all ${scope === s ? "bg-primary/20 border-primary/40 text-primary" : "bg-white/5 border-white/10 text-muted-foreground"}`}
+                  data-testid={`button-scope-${s}`}
+                >
+                  {s === "platform" ? <><Globe className="w-3.5 h-3.5" /> Platform-wide</> : <><Shield className="w-3.5 h-3.5" /> Tribe-specific</>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {scope === "tribe" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tribe</Label>
+              <Select value={tribeId} onValueChange={setTribeId}>
+                <SelectTrigger className="bg-white/5 border-white/10" data-testid="select-proposal-tribe">
+                  <SelectValue placeholder="Choose a tribe…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userTribes.length === 0 ? (
+                    <SelectItem value="_none" disabled>Join a tribe first</SelectItem>
+                  ) : (
+                    userTribes.map((t: any) => (
+                      <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label className="text-xs">Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Brief, clear proposal title" className="bg-white/5 border-white/10" data-testid="input-proposal-title" />
@@ -316,7 +369,7 @@ function NewProposalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </div>
           <Button
             className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
-            disabled={!title.trim() || !description.trim() || mutation.isPending}
+            disabled={!title.trim() || !description.trim() || (scope === "tribe" && !tribeId) || mutation.isPending}
             onClick={handleSubmit}
             data-testid="button-submit-proposal"
           >
@@ -331,10 +384,17 @@ function NewProposalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
 export default function GovernancePage() {
   const { user } = useAuth();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const highlightId = params.get("id") ? Number(params.get("id")) : null;
+
   const [tab, setTab] = useState<"all" | "mine">("all");
   const [filterCat, setFilterCat] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("active");
+  const [filterStatus, setFilterStatus] = useState(highlightId ? "all" : "active");
   const [showNew, setShowNew] = useState(false);
+
+  // Ref map to scroll the highlighted card into view
+  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const { data: proposals = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ["/api/proposals"],
@@ -344,6 +404,15 @@ export default function GovernancePage() {
       return res.json();
     },
   });
+
+  // Auto-scroll to highlighted proposal once loaded
+  useEffect(() => {
+    if (!highlightId || isLoading) return;
+    const el = cardRefs.current[highlightId];
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
+    }
+  }, [highlightId, isLoading, proposals]);
 
   const filtered = proposals.filter((p: any) => {
     if (tab === "mine" && p.proposer?.id !== user?.id) return false;
@@ -422,7 +491,9 @@ export default function GovernancePage() {
           </div>
         ) : (
           filtered.map((p: any) => (
-            <ProposalCard key={p.id} proposal={p} onRefresh={refetch} />
+            <div key={p.id} ref={el => { cardRefs.current[p.id] = el; }} className={highlightId === p.id ? "ring-2 ring-primary/60 rounded-2xl" : ""}>
+              <ProposalCard proposal={p} onRefresh={refetch} />
+            </div>
           ))
         )}
       </div>

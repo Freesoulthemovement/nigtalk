@@ -21,6 +21,13 @@ export async function registerRoutes(
     res.json(tribes);
   });
 
+  app.get("/api/tribes/mine", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const tribeIds = await storage.getUserTribeIds(userId);
+    const all = await storage.getTribes();
+    res.json(all.filter(t => tribeIds.includes(t.id)));
+  });
+
   app.post("/api/tribes", isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     try {
@@ -267,9 +274,12 @@ export async function registerRoutes(
   });
 
   app.get("/api/proposals/:id", isAuthenticated, async (req, res) => {
-    const proposal = await storage.getProposal(Number(req.params.id));
-    if (!proposal) return res.status(404).json({ message: "Proposal not found" });
     const userId = (req.user as any).claims.sub;
+    const proposalId = Number(req.params.id);
+    const canAccess = await storage.canUserAccessProposal(proposalId, userId);
+    if (!canAccess) return res.status(404).json({ message: "Proposal not found" });
+    const proposal = await storage.getProposal(proposalId);
+    if (!proposal) return res.status(404).json({ message: "Proposal not found" });
     const myVote = await storage.getUserVoteOnProposal(proposal.id, userId);
     res.json({ ...proposal, myVote: myVote?.voteType || null });
   });
@@ -278,6 +288,8 @@ export async function registerRoutes(
     const userId = (req.user as any).claims.sub;
     const proposalId = Number(req.params.id);
     try {
+      const canAccess = await storage.canUserAccessProposal(proposalId, userId);
+      if (!canAccess) return res.status(404).json({ message: "Proposal not found" });
       const schema = z.object({ voteType: z.enum(["support", "nullify"]) });
       const { voteType } = schema.parse(req.body);
       await storage.upsertVote(proposalId, userId, voteType);
@@ -292,6 +304,8 @@ export async function registerRoutes(
   app.delete("/api/proposals/:id/vote", isAuthenticated, async (req, res) => {
     const userId = (req.user as any).claims.sub;
     const proposalId = Number(req.params.id);
+    const canAccess = await storage.canUserAccessProposal(proposalId, userId);
+    if (!canAccess) return res.status(404).json({ message: "Proposal not found" });
     await storage.removeVote(proposalId, userId);
     const updated = await storage.getProposal(proposalId);
     res.json({ ...updated, myVote: null });
@@ -301,6 +315,8 @@ export async function registerRoutes(
     const userId = (req.user as any).claims.sub;
     const proposalId = Number(req.params.id);
     try {
+      const canAccess = await storage.canUserAccessProposal(proposalId, userId);
+      if (!canAccess) return res.status(404).json({ message: "Proposal not found" });
       const schema = z.object({
         suggestionType: z.enum(["add", "remove"]),
         content: z.string().min(1),
@@ -318,6 +334,8 @@ export async function registerRoutes(
     const userId = (req.user as any).claims.sub;
     const proposalId = Number(req.params.id);
     try {
+      const canAccess = await storage.canUserAccessProposal(proposalId, userId);
+      if (!canAccess) return res.status(404).json({ message: "Proposal not found" });
       const schema = z.object({ amount: z.string().regex(/^\d+(\.\d{1,2})?$/) });
       const { amount } = schema.parse(req.body);
       const proposal = await storage.getProposal(proposalId);

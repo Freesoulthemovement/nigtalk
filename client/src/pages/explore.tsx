@@ -574,7 +574,7 @@ function ImportantEventsSection() {
             return (
               <button
                 key={p.id}
-                onClick={() => setLocation("/governance")}
+                onClick={() => setLocation(`/governance?id=${p.id}`)}
                 className={`w-[165px] shrink-0 glass-card rounded-2xl p-4 text-left ${isNullified ? "border-red-500/20" : ""}`}
                 data-testid={`card-event-proposal-${p.id}`}
               >
