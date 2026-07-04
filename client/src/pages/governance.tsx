@@ -3,7 +3,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, Plus, ThumbsUp, ThumbsDown, Lightbulb, DollarSign, ChevronDown, ChevronUp, Globe, Shield, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, ThumbsUp, ThumbsDown, Lightbulb, DollarSign, ChevronDown, ChevronUp, Globe, Shield, Loader2, AlertTriangle, Users } from "lucide-react";
 import { FreeSoulEmblem } from "@/components/free-soul-emblem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,9 +111,11 @@ function ProposalCard({ proposal, onRefresh }: { proposal: any; onRefresh: () =>
               {isNullified ? "Community Nullified" : proposal.status}
             </span>
             {proposal.tribe ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/30 text-purple-400 bg-purple-500/10 flex items-center gap-1">
-                <Shield className="w-2.5 h-2.5" /> {proposal.tribe.name}
-              </span>
+              <Link href={`/tribes/${proposal.tribe.id}`}>
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/30 text-purple-400 bg-purple-500/10 flex items-center gap-1 hover:bg-purple-500/20 transition-colors cursor-pointer" data-testid={`link-tribe-badge-${proposal.tribe.id}`}>
+                  <Shield className="w-2.5 h-2.5" /> {proposal.tribe.name}
+                </span>
+              </Link>
             ) : (
               <span className="text-[10px] px-2 py-0.5 rounded-full border border-blue-500/30 text-blue-400 bg-blue-500/10 flex items-center gap-1">
                 <Globe className="w-2.5 h-2.5" /> Platform-wide
@@ -393,6 +395,7 @@ export default function GovernancePage() {
   const [tab, setTab] = useState<"all" | "mine">("all");
   const [filterCat, setFilterCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState(highlightId ? "all" : "active");
+  const [filterScope, setFilterScope] = useState<"all" | "platform" | "tribe">("all");
   const [showNew, setShowNew] = useState(false);
 
   // Ref map to scroll the highlighted card into view
@@ -420,6 +423,8 @@ export default function GovernancePage() {
     if (tab === "mine" && p.proposer?.id !== user?.id) return false;
     if (filterCat !== "all" && p.category !== filterCat) return false;
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
+    if (filterScope === "platform" && p.tribeId != null) return false;
+    if (filterScope === "tribe" && p.tribeId == null) return false;
     return true;
   });
 
@@ -448,6 +453,23 @@ export default function GovernancePage() {
         <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-4">
           <button onClick={() => setTab("all")} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab === "all" ? "bg-primary text-white" : "text-muted-foreground"}`} data-testid="tab-all-proposals">All Proposals</button>
           <button onClick={() => setTab("mine")} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab === "mine" ? "bg-primary text-white" : "text-muted-foreground"}`} data-testid="tab-my-proposals">My Proposals</button>
+        </div>
+
+        <div className="flex gap-1.5 mb-3">
+          {([
+            { value: "all", label: "All", icon: null },
+            { value: "platform", label: "Platform-wide", icon: <Globe className="w-3 h-3" /> },
+            { value: "tribe", label: "My Tribes", icon: <Users className="w-3 h-3" /> },
+          ] as const).map(s => (
+            <button
+              key={s.value}
+              onClick={() => setFilterScope(s.value)}
+              className={`flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${filterScope === s.value ? "bg-primary/20 border-primary/40 text-primary" : "bg-white/5 border-white/10 text-muted-foreground"}`}
+              data-testid={`filter-scope-${s.value}`}
+            >
+              {s.icon}{s.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
