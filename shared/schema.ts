@@ -140,6 +140,20 @@ export const fundingAllocations = pgTable("funding_allocations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Notifications ────────────────────────────────────────────────────────────
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull().default("new_proposal"), // e.g. "new_proposal"
+  tribeId: integer("tribe_id").references(() => tribes.id),
+  proposalId: integer("proposal_id").references(() => proposals.id),
+  title: text("title").notNull(),
+  body: text("body"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // ── Relations ────────────────────────────────────────────────────────────────
 
 export const tribesRelations = relations(tribes, ({ one, many }) => ({
@@ -194,6 +208,12 @@ export const proposalSuggestionsRelations = relations(proposalSuggestions, ({ on
 export const fundingAllocationsRelations = relations(fundingAllocations, ({ one }) => ({
   proposal: one(proposals, { fields: [fundingAllocations.proposalId], references: [proposals.id] }),
   user: one(users, { fields: [fundingAllocations.userId], references: [users.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+  tribe: one(tribes, { fields: [notifications.tribeId], references: [tribes.id] }),
+  proposal: one(proposals, { fields: [notifications.proposalId], references: [proposals.id] }),
 }));
 
 // ── Insert schemas & types ───────────────────────────────────────────────────

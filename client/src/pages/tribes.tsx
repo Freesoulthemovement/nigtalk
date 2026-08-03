@@ -1,6 +1,6 @@
 import { useTribes, useCreateTribe } from "@/hooks/use-tribes";
 import { NavBar } from "@/components/nav-bar";
-import { Loader2, Plus, Shield, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Shield, ArrowLeft, Vote } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,10 +11,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTribeSchema, type InsertTribe } from "@shared/schema";
 import { useState } from "react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export default function TribesPage() {
   const { data: tribes, isLoading } = useTribes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { data: notifications = [] } = useNotifications();
+
+  // Count unread governance notifications per tribe
+  const unreadByTribe: Record<number, number> = {};
+  for (const n of notifications) {
+    if (!n.isRead && n.tribeId != null && n.type === "new_proposal") {
+      unreadByTribe[n.tribeId] = (unreadByTribe[n.tribeId] || 0) + 1;
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen pb-24 animate-in-fade">
@@ -53,19 +63,29 @@ export default function TribesPage() {
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {(tribes || []).map((tribe: any) => (
+            {(tribes || []).map((tribe: any) => {
+              const unread = unreadByTribe[tribe.id] || 0;
+              return (
               <Link key={tribe.id} href={`/tribes/${tribe.id}`}>
-                <div className="glass-card rounded-2xl overflow-hidden cursor-pointer hover:border-purple-500/30 transition-all" data-testid={`card-tribe-${tribe.id}`}>
+                <div className="glass-card rounded-2xl overflow-hidden cursor-pointer hover:border-purple-500/30 transition-all relative" data-testid={`card-tribe-${tribe.id}`}>
                   <div className="h-20 bg-gradient-to-br from-purple-900/60 to-indigo-900/40 flex items-center justify-center">
                     <Shield className="w-10 h-10 text-purple-400/40" />
                   </div>
                   <div className="p-3">
-                    <h3 className="font-semibold text-sm truncate">{tribe.name}</h3>
+                    <div className="flex items-center justify-between gap-1">
+                      <h3 className="font-semibold text-sm truncate">{tribe.name}</h3>
+                      {unread > 0 && (
+                        <span className="flex items-center gap-0.5 text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full px-1.5 py-0.5 shrink-0" data-testid={`badge-tribe-governance-${tribe.id}`}>
+                          <Vote className="w-2.5 h-2.5" />{unread}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{tribe.description || "A sovereign tribe"}</p>
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
 
             {(!tribes || tribes.length === 0) && (
               <div className="col-span-2 text-center py-16 text-muted-foreground glass-card rounded-2xl">

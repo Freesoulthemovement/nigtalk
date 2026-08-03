@@ -1,4 +1,4 @@
-import { users, tribes, tribeMembers, videos, messages, userBestowals, vibes, blockedUsers, tribalShieldCases, proposals, proposalVotes, proposalSuggestions, fundingAllocations, type User, type Tribe, type Video, type Message, type UserBestowal, type Vibe, type TribalShieldCase, type Proposal, type ProposalVote, type ProposalSuggestion, type FundingAllocation } from "@shared/schema";
+import { users, tribes, tribeMembers, videos, messages, userBestowals, vibes, blockedUsers, tribalShieldCases, proposals, proposalVotes, proposalSuggestions, fundingAllocations, notifications, type User, type Tribe, type Video, type Message, type UserBestowal, type Vibe, type TribalShieldCase, type Proposal, type ProposalVote, type ProposalSuggestion, type FundingAllocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
@@ -45,6 +45,12 @@ export interface IStorage {
   getUserAllocatedFunds(proposalId: number, userId: string): Promise<string>;
   getTotalAllocatedByUser(userId: string): Promise<number>;
   getUserVotesForProposals(userId: string, proposalIds: number[]): Promise<Record<number, string>>;
+  createNotification(data: { userId: string; type: string; tribeId?: number; proposalId?: number; title: string; body?: string }): Promise<void>;
+  getNotifications(userId: string): Promise<any[]>;
+  markNotificationRead(id: number, userId: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  markTribeNotificationsRead(userId: string, tribeId: number): Promise<void>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 }
 
 function computeNullification(supportCount: number, nullifyCount: number) {
@@ -457,6 +463,57 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return result;
+  }
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+
+  async createNotification(data: { userId: string; type: string; tribeId?: number; proposalId?: number; title: string; body?: string }): Promise<void> {
+    await db.insert(notifications).values({
+      userId: data.userId,
+      type: data.type,
+      tribeId: data.tribeId ?? null,
+      proposalId: data.proposalId ?? null,
+      title: data.title,
+      body: data.body ?? null,
+    });
+  }
+
+  async getNotifications(userId: string): Promise<any[]> {
+    const rows = await db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(50);
+    return rows;
+  }
+
+  async markNotificationRead(id: number, userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  }
+
+  async markTribeNotificationsRead(userId: string, tribeId: number): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.tribeId, tribeId),
+          eq(notifications.isRead, false)
+        )
+      );
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ cnt: count() }).from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return result[0]?.cnt || 0;
   }
 }
 

@@ -281,6 +281,28 @@ export async function registerRoutes(
         }
       }
       const proposal = await storage.createProposal({ ...input, proposerId: userId, status: "active" });
+
+      // Fan out in-app notifications to all tribe members (excluding the proposer)
+      if (proposal.tribeId != null) {
+        const tribeMembers = await storage.getTribeMembers(proposal.tribeId);
+        const tribe = await storage.getTribe(proposal.tribeId);
+        const tribeName = tribe?.name || "your tribe";
+        await Promise.all(
+          tribeMembers
+            .filter((m: any) => m.userId !== userId)
+            .map((m: any) =>
+              storage.createNotification({
+                userId: m.userId,
+                type: "new_proposal",
+                tribeId: proposal.tribeId!,
+                proposalId: proposal.id,
+                title: `New proposal in ${tribeName}`,
+                body: proposal.title,
+              })
+            )
+        );
+      }
+
       res.status(201).json(proposal);
     } catch (error) {
       res.status(400).json({ message: "Invalid input" });
@@ -373,6 +395,39 @@ export async function registerRoutes(
     } catch (error) {
       res.status(400).json({ message: "Invalid input" });
     }
+  });
+
+  // ── Notifications ───────────────────────────────────────────────────────────
+
+  app.get("/api/notifications", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const notifs = await storage.getNotifications(userId);
+    res.json(notifs);
+  });
+
+  app.get("/api/notifications/unread-count", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const count = await storage.getUnreadNotificationCount(userId);
+    res.json({ count });
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    await storage.markNotificationRead(Number(req.params.id), userId);
+    res.json({ success: true });
+  });
+
+  app.patch("/api/notifications/read-all", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    await storage.markAllNotificationsRead(userId);
+    res.json({ success: true });
+  });
+
+  app.patch("/api/notifications/read-tribe/:tribeId", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const tribeId = Number(req.params.tribeId);
+    await storage.markTribeNotificationsRead(userId, tribeId);
+    res.json({ success: true });
   });
 
   return httpServer;

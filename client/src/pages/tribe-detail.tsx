@@ -1,4 +1,4 @@
-import { useRoute } from "wouter";
+import { useRoute, useSearch } from "wouter";
 import { useTribe, useTribeMessages, useSendMessage, useJoinTribe } from "@/hooks/use-tribes";
 import { Loader2, Send, Users, UserPlus, ArrowLeft, Radio, ThumbsUp, ThumbsDown, Lightbulb, DollarSign, Globe, Shield, AlertTriangle, Plus, ChevronDown, ChevronUp, MessageCircle, Vote } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { FreeSoulEmblem } from "@/components/free-soul-emblem";
+import { useNotifications, useMarkTribeNotificationsRead } from "@/hooks/use-notifications";
 
 const CATEGORIES = [
   { value: "emergency", label: "Emergency", color: "text-red-400 bg-red-500/10 border-red-500/30" },
@@ -276,13 +277,41 @@ function NewTribeProposalDialog({ open, onOpenChange, tribeId, tribeName }: { op
 export default function TribeDetailPage() {
   const [, params] = useRoute("/tribes/:id");
   const tribeId = parseInt(params?.id || "0");
+  const search = useSearch();
+  const searchParams = new URLSearchParams(search);
+  const tabParam = searchParams.get("tab");
+
   const { data: tribe, isLoading: isTribeLoading } = useTribe(tribeId);
   const { data: messages, isLoading: isMessagesLoading } = useTribeMessages(tribeId);
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
   const { mutate: joinTribe, isPending: isJoining } = useJoinTribe();
   const { user } = useAuth();
+  const { data: notifications = [] } = useNotifications();
+  const { mutate: markTribeRead } = useMarkTribeNotificationsRead();
 
-  const [activeTab, setActiveTab] = useState<"chat" | "governance">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "governance">(
+    tabParam === "governance" ? "governance" : "chat"
+  );
+
+  // Count unread governance notifications for this tribe
+  const unreadGovernanceCount = notifications.filter(
+    n => !n.isRead && n.tribeId === tribeId && n.type === "new_proposal"
+  ).length;
+
+  // Mark this tribe's governance notifications read when governance tab is active.
+  // Depends on unreadGovernanceCount so it fires after async notification data arrives,
+  // covering both interactive tab switches and cold ?tab=governance deep-links.
+  useEffect(() => {
+    if (activeTab === "governance" && unreadGovernanceCount > 0) {
+      markTribeRead(tribeId);
+    }
+  }, [activeTab, tribeId, unreadGovernanceCount, markTribeRead]);
+
+  // When switching to governance tab, update active tab (read side-effect handled by useEffect)
+  const handleGovernanceTab = () => {
+    setActiveTab("governance");
+  };
+
   const [msgInput, setMsgInput] = useState("");
   const [showNewProposal, setShowNewProposal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -350,11 +379,16 @@ export default function TribeDetailPage() {
           <MessageCircle className="w-3.5 h-3.5" /> Chat
         </button>
         <button
-          onClick={() => setActiveTab("governance")}
+          onClick={handleGovernanceTab}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === "governance" ? "bg-primary text-white" : "text-muted-foreground"}`}
           data-testid="tab-tribe-governance"
         >
           <Vote className="w-3.5 h-3.5" /> Governance
+          {unreadGovernanceCount > 0 && (
+            <span className="ml-0.5 text-[9px] font-bold bg-purple-500 text-white rounded-full px-1.5 py-0.5 leading-none" data-testid="badge-governance-tab-count">
+              {unreadGovernanceCount}
+            </span>
+          )}
         </button>
       </div>
 
