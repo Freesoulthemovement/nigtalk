@@ -51,13 +51,25 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
-  await authStorage.upsertUser({
-    id: claims["sub"],
+  const id = claims["sub"];
+  const isNew = !(await authStorage.getUser(id));
+
+  const user = await authStorage.upsertUser({
+    id,
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+
+  // Fire-and-forget welcome email on first login only
+  if (isNew && user.email && user.firstName) {
+    import("../../replit_integrations/sendgrid/sendgrid")
+      .then(({ sendWelcomeEmail }) =>
+        sendWelcomeEmail(user.email!, user.firstName!)
+      )
+      .catch((err) => console.error("[sendgrid] Welcome email failed:", err));
+  }
 }
 
 export async function setupAuth(app: Express) {

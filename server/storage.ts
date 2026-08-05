@@ -30,6 +30,7 @@ export interface IStorage {
   unblockUser(userId: string, blockedUserId: string): Promise<void>;
   getBlockedUsers(userId: string): Promise<string[]>;
   createShieldCase(data: any): Promise<TribalShieldCase>;
+  getShieldCase(id: number): Promise<TribalShieldCase | undefined>;
   getShieldCases(userId?: string): Promise<TribalShieldCase[]>;
   updateShieldCase(id: number, data: any): Promise<TribalShieldCase>;
   witnessShieldCase(caseId: number): Promise<void>;
@@ -255,6 +256,11 @@ export class DatabaseStorage implements IStorage {
   async createShieldCase(data: any): Promise<TribalShieldCase> {
     const [created] = await db.insert(tribalShieldCases).values(data).returning();
     return created;
+  }
+
+  async getShieldCase(id: number): Promise<TribalShieldCase | undefined> {
+    const [c] = await db.select().from(tribalShieldCases).where(eq(tribalShieldCases.id, id));
+    return c;
   }
 
   async getShieldCases(userId?: string): Promise<TribalShieldCase[]> {

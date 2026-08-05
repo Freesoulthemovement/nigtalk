@@ -8,6 +8,7 @@ import { isAuthenticated } from "./replit_integrations/auth";
 import { insertTribeSchema, insertVideoSchema, insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
 import { listDriveFiles, getUncachableGoogleDriveClient } from "./replit_integrations/google_drive/googleDrive";
+import { sendProposalAlertEmail, sendShieldCaseEmail } from "./replit_integrations/sendgrid/sendgrid";
 
 // ── Document fallback (only entries with real static assets) ─────────────────
 // Only the Living Dictionary has a bundled PDF. The other governance documents
@@ -248,6 +249,15 @@ export async function registerRoutes(
     try {
       const shieldCase = await storage.createShieldCase({ ...req.body, userId });
       res.status(201).json(shieldCase);
+
+      // Fire-and-forget: confirmation email to the case filer
+      const claims = (req.user as any).claims;
+      const email = claims["email"] as string | undefined;
+      const firstName = (claims["first_name"] as string | undefined) || "Member";
+      if (email) {
+        sendShieldCaseEmail(email, firstName, shieldCase.agentName, "filed")
+          .catch((err) => console.error("[sendgrid] Shield case filed email failed:", err));
+      }
     } catch (error) {
       res.status(400).json({ message: "Invalid input" });
     }
@@ -275,8 +285,21 @@ export async function registerRoutes(
   });
 
   app.post("/api/shield-cases/:id/witness", isAuthenticated, async (req, res) => {
-    await storage.witnessShieldCase(Number(req.params.id));
+    const caseId = Number(req.params.id);
+    const shieldCase = await storage.getShieldCase(caseId);
+    await storage.witnessShieldCase(caseId);
     res.json({ success: true });
+
+    // Fire-and-forget: notify the case owner of the new witness
+    if (shieldCase) {
+      storage.getUser(shieldCase.userId).then((owner) => {
+        if (owner?.email) {
+          const firstName = owner.firstName || "Member";
+          sendShieldCaseEmail(owner.email, firstName, shieldCase.agentName, "witnessed")
+            .catch((err) => console.error("[sendgrid] Shield case witnessed email failed:", err));
+        }
+      }).catch((err) => console.error("[sendgrid] Shield case owner lookup failed:", err));
+    }
   });
 
   // ── Governance ─────────────────────────────────────────────────────────────
@@ -318,25 +341,36 @@ export async function registerRoutes(
       }
       const proposal = await storage.createProposal({ ...input, proposerId: userId, status: "active" });
 
-      // Fan out in-app notifications to all tribe members (excluding the proposer)
+      // Fan out in-app notifications + emails to all tribe members (excluding the proposer)
       if (proposal.tribeId != null) {
         const tribeMembers = await storage.getTribeMembers(proposal.tribeId);
         const tribe = await storage.getTribe(proposal.tribeId);
         const tribeName = tribe?.name || "your tribe";
+
+        const otherMembers = tribeMembers.filter((m: any) => m.userId !== userId);
+
         await Promise.all(
-          tribeMembers
-            .filter((m: any) => m.userId !== userId)
-            .map((m: any) =>
-              storage.createNotification({
-                userId: m.userId,
-                type: "new_proposal",
-                tribeId: proposal.tribeId!,
-                proposalId: proposal.id,
-                title: `New proposal in ${tribeName}`,
-                body: proposal.title,
-              })
-            )
+          otherMembers.map((m: any) =>
+            storage.createNotification({
+              userId: m.userId,
+              type: "new_proposal",
+              tribeId: proposal.tribeId!,
+              proposalId: proposal.id,
+              title: `New proposal in ${tribeName}`,
+              body: proposal.title,
+            })
+          )
         );
+
+        // Fire-and-forget emails to tribe members who have an email address
+        for (const m of otherMembers) {
+          const memberEmail: string | undefined = m.user?.email;
+          const memberFirstName: string = m.user?.firstName || "Member";
+          if (memberEmail) {
+            sendProposalAlertEmail(memberEmail, memberFirstName, proposal.title, "new")
+              .catch((err) => console.error("[sendgrid] Proposal alert email failed:", err));
+          }
+        }
       }
 
       res.status(201).json(proposal);
