@@ -54,6 +54,7 @@ export interface IStorage {
   getUnreadNotificationCount(userId: string): Promise<number>;
   hasAcceptedTerms(userId: string): Promise<boolean>;
   acceptTerms(userId: string): Promise<void>;
+  expireOverdueProposals(): Promise<number>;
 }
 
 function computeNullification(supportCount: number, nullifyCount: number) {
@@ -533,6 +534,21 @@ export class DatabaseStorage implements IStorage {
     await db.insert(userAcceptances)
       .values({ userId })
       .onConflictDoNothing();
+  }
+
+  async expireOverdueProposals(): Promise<number> {
+    const result = await db
+      .update(proposals)
+      .set({ status: "expired" })
+      .where(
+        and(
+          eq(proposals.status, "active"),
+          sql`${proposals.expiresAt} IS NOT NULL`,
+          sql`${proposals.expiresAt} <= NOW()`
+        )
+      )
+      .returning({ id: proposals.id });
+    return result.length;
   }
 }
 

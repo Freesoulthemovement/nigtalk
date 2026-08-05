@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -100,4 +101,21 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  // ── Proposal expiry sweep ────────────────────────────────────────────────
+  // Runs immediately on startup (catches proposals that expired while the
+  // server was down) and then every 15 minutes.
+  const runExpirySweep = async () => {
+    try {
+      const count = await storage.expireOverdueProposals();
+      if (count > 0) {
+        log(`[governance] Expired ${count} overdue proposal${count === 1 ? "" : "s"}`);
+      }
+    } catch (err) {
+      console.error("[governance] Expiry sweep failed:", err);
+    }
+  };
+
+  runExpirySweep();
+  setInterval(runExpirySweep, 15 * 60 * 1000);
 })();
