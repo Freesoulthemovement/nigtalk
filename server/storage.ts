@@ -1,4 +1,4 @@
-import { users, tribes, tribeMembers, videos, messages, userBestowals, vibes, blockedUsers, tribalShieldCases, proposals, proposalVotes, proposalSuggestions, fundingAllocations, notifications, type User, type Tribe, type Video, type Message, type UserBestowal, type Vibe, type TribalShieldCase, type Proposal, type ProposalVote, type ProposalSuggestion, type FundingAllocation } from "@shared/schema";
+import { users, tribes, tribeMembers, videos, messages, userBestowals, vibes, blockedUsers, tribalShieldCases, proposals, proposalVotes, proposalSuggestions, fundingAllocations, notifications, userAcceptances, type User, type Tribe, type Video, type Message, type UserBestowal, type Vibe, type TribalShieldCase, type Proposal, type ProposalVote, type ProposalSuggestion, type FundingAllocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, count } from "drizzle-orm";
 
@@ -51,6 +51,8 @@ export interface IStorage {
   markAllNotificationsRead(userId: string): Promise<void>;
   markTribeNotificationsRead(userId: string, tribeId: number): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+  hasAcceptedTerms(userId: string): Promise<boolean>;
+  acceptTerms(userId: string): Promise<void>;
 }
 
 function computeNullification(supportCount: number, nullifyCount: number) {
@@ -515,6 +517,18 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
     return result[0]?.cnt || 0;
   }
+
+  async hasAcceptedTerms(userId: string): Promise<boolean> {
+    const rows = await db.select().from(userAcceptances).where(eq(userAcceptances.userId, userId));
+    return rows.length > 0;
+  }
+
+  async acceptTerms(userId: string): Promise<void> {
+    await db.insert(userAcceptances)
+      .values({ userId })
+      .onConflictDoNothing();
+  }
 }
+
 
 export const storage = new DatabaseStorage();

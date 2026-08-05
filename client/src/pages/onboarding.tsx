@@ -5,9 +5,10 @@ import { Radio, HeartHandshake, Users } from "lucide-react";
 
 interface OnboardingProps {
   onComplete: () => void;
+  error?: string | null;
 }
 
-export default function OnboardingPage({ onComplete }: OnboardingProps) {
+export default function OnboardingPage({ onComplete, error }: OnboardingProps) {
   const [check1, setCheck1] = useState(false);
   const [check2, setCheck2] = useState(false);
 
@@ -85,6 +86,12 @@ export default function OnboardingPage({ onComplete }: OnboardingProps) {
             </span>
           </label>
         </div>
+
+        {error && (
+          <p className="text-sm text-red-400 text-center mb-2" data-testid="text-accept-error">
+            {error}
+          </p>
+        )}
 
         <Button
           className="w-full h-14 text-lg rounded-2xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-900/30"

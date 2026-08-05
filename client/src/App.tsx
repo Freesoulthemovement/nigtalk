@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { useState, useEffect, useCallback } from "react";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,34 +16,64 @@ import TribeDetailPage from "@/pages/tribe-detail";
 import UploadPage from "@/pages/upload";
 import ProfilePage from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
-import RadioPage from "@/pages/radio";
 import BestowalPage from "@/pages/bestowal";
 import MessagingPage from "@/pages/messaging";
 import LibraryPage from "@/pages/library";
 import BlueprintsPage from "@/pages/blueprints";
 import GovernancePage from "@/pages/governance";
 
+const LS_KEY = (id: string) => `nigtalk_terms_${id}`;
+
 function Router() {
   const { user, isLoading } = useAuth();
-  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
+  // null = unknown (checking), true = accepted, false = not accepted
+  const [termsState, setTermsState] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (user) {
-      const accepted = localStorage.getItem(`nigtalk_terms_${user.id}`);
-      setHasAcceptedTerms(accepted === "true");
-    } else {
-      setHasAcceptedTerms(false);
+    if (!user) { setTermsState(false); return; }
+
+    // Fast-path: localStorage already confirmed acceptance
+    if (localStorage.getItem(LS_KEY(user.id)) === "true") {
+      setTermsState(true);
+      return;
     }
+
+    // Fallback: check server (covers cleared storage / new devices)
+    fetch("/api/onboarding/status", { credentials: "include" })
+      .then(r => r.json())
+      .then(({ accepted }: { accepted: boolean }) => {
+        if (accepted) localStorage.setItem(LS_KEY(user.id), "true");
+        setTermsState(accepted);
+      })
+      .catch(() => setTermsState(false));
   }, [user]);
 
-  const handleAcceptTerms = () => {
-    if (user) {
-      localStorage.setItem(`nigtalk_terms_${user.id}`, "true");
-      setHasAcceptedTerms(true);
-    }
-  };
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
-  if (isLoading) {
+  const handleAcceptTerms = useCallback(async () => {
+    if (!user) return;
+    setAcceptError(null);
+    try {
+      const res = await fetch("/api/onboarding/accept", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        // Server rejected the write — keep the onboarding screen visible
+        setAcceptError("Something went wrong saving your acceptance. Please try again.");
+        return;
+      }
+    } catch {
+      // Network failure — keep the onboarding screen visible so the user can retry
+      setAcceptError("Network error. Please check your connection and try again.");
+      return;
+    }
+    // Only cache and unlock after confirmed server persistence
+    localStorage.setItem(LS_KEY(user.id), "true");
+    setTermsState(true);
+  }, [user]);
+
+  if (isLoading || (user && termsState === null)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background text-primary">
         <Loader2 className="w-10 h-10 animate-spin" />
@@ -60,8 +90,8 @@ function Router() {
     );
   }
 
-  if (!hasAcceptedTerms) {
-    return <OnboardingPage onComplete={handleAcceptTerms} />;
+  if (!termsState) {
+    return <OnboardingPage onComplete={handleAcceptTerms} error={acceptError} />;
   }
 
   return (
@@ -72,7 +102,7 @@ function Router() {
       <Route path="/upload" component={UploadPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/settings" component={SettingsPage} />
-      <Route path="/radio" component={RadioPage} />
+      <Route path="/radio">{() => <Redirect to="/" />}</Route>
       <Route path="/bestowal" component={BestowalPage} />
       <Route path="/messages" component={MessagingPage} />
       <Route path="/library" component={LibraryPage} />

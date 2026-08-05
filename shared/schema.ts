@@ -154,6 +154,15 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Onboarding acceptance ────────────────────────────────────────────────────
+// Tracks whether a user has accepted the Tribal Code & Community Standards.
+// This is the server-side source of truth; localStorage is only a fast-path cache.
+
+export const userAcceptances = pgTable("user_acceptances", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+});
+
 // ── Relations ────────────────────────────────────────────────────────────────
 
 export const tribesRelations = relations(tribes, ({ one, many }) => ({

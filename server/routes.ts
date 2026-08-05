@@ -433,6 +433,20 @@ export async function registerRoutes(
     }
   });
 
+  // ── Onboarding ─────────────────────────────────────────────────────────────
+
+  app.get("/api/onboarding/status", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    const accepted = await storage.hasAcceptedTerms(userId);
+    res.json({ accepted });
+  });
+
+  app.post("/api/onboarding/accept", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).claims.sub;
+    await storage.acceptTerms(userId);
+    res.json({ accepted: true });
+  });
+
   // ── Documents (Google Drive sync) ──────────────────────────────────────────
 
   app.get("/api/documents", async (req, res) => {

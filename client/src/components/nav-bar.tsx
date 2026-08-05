@@ -1,10 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { Compass, Radio, Plus, HeartHandshake, User } from "lucide-react";
+import { Compass, Plus, HeartHandshake, User, Vote } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Compass, label: "Explore", href: "/" },
-  { icon: Radio, label: "Radio", href: "/radio" },
+  { icon: Vote, label: "Govern", href: "/governance" },
   { icon: Plus, label: "", href: "/upload", accent: true },
   { icon: HeartHandshake, label: "Bestowal", href: "/bestowal" },
   { icon: User, label: "Profile", href: "/profile" },
