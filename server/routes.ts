@@ -7,6 +7,42 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { isAuthenticated } from "./replit_integrations/auth";
 import { insertTribeSchema, insertVideoSchema, insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
+import { listDriveFiles, getUncachableGoogleDriveClient } from "./replit_integrations/google_drive/googleDrive";
+
+// ── Document fallback (only entries with real static assets) ─────────────────
+// Only the Living Dictionary has a bundled PDF. The other governance documents
+// are not served from static assets — they require Google Drive to be configured.
+const FALLBACK_DOCUMENTS = [
+  { id: "fallback-dictionary", name: "Free Soul Living Dictionary", mimeType: "application/pdf", modifiedTime: "2025-10-16T00:00:00Z", isLive: false },
+];
+
+// ── Folder-scoped allowlist cache ─────────────────────────────────────────────
+// Prevents the content proxy from serving arbitrary Drive files.
+// Cache the set of allowed IDs for ALLOWLIST_TTL_MS to avoid a Drive listing
+// on every document open while still picking up newly added files quickly.
+const ALLOWLIST_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let allowlistCache: { ids: Set<string>; expiresAt: number } | null = null;
+
+async function getAllowedDriveIds(): Promise<Set<string> | null> {
+  const folderId = process.env.GOOGLE_DRIVE_DOCS_FOLDER_ID;
+  if (!folderId) return null;
+
+  const now = Date.now();
+  if (allowlistCache && now < allowlistCache.expiresAt) {
+    return allowlistCache.ids;
+  }
+
+  try {
+    const result = await listDriveFiles(folderId);
+    const ids = new Set<string>(((result as any).files || []).map((f: any) => f.id as string));
+    allowlistCache = { ids, expiresAt: now + ALLOWLIST_TTL_MS };
+    return ids;
+  } catch (err) {
+    console.error("[documents] Failed to refresh allowlist:", err);
+    // Return stale cache rather than denying all requests on a transient error
+    return allowlistCache?.ids ?? null;
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -394,6 +430,79 @@ export async function registerRoutes(
       res.status(201).json(allocation);
     } catch (error) {
       res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  // ── Documents (Google Drive sync) ──────────────────────────────────────────
+
+  app.get("/api/documents", async (req, res) => {
+    const folderId = process.env.GOOGLE_DRIVE_DOCS_FOLDER_ID;
+    if (!folderId) {
+      return res.json({ documents: FALLBACK_DOCUMENTS, source: "fallback" });
+    }
+    try {
+      const result = await listDriveFiles(folderId);
+      const docs = ((result as any).files || []).map((f: any) => ({ ...f, isLive: true }));
+      res.json({ documents: docs.length > 0 ? docs : FALLBACK_DOCUMENTS, source: docs.length > 0 ? "drive" : "fallback" });
+    } catch (err) {
+      console.error("[documents] Google Drive fetch failed, using fallback:", err);
+      res.json({ documents: FALLBACK_DOCUMENTS, source: "fallback" });
+    }
+  });
+
+  app.get("/api/documents/:fileId/content", async (req, res) => {
+    const { fileId } = req.params;
+
+    // Static fallback: only the dictionary has a bundled PDF asset
+    if (fileId === "fallback-dictionary") {
+      return res.redirect("/free-soul-living-dictionary.pdf");
+    }
+
+    // Any other fallback- ID has no static asset and Drive is not configured
+    if (fileId.startsWith("fallback-")) {
+      return res.status(404).json({ message: "Document not available until Google Drive is configured (GOOGLE_DRIVE_DOCS_FOLDER_ID)." });
+    }
+
+    // Drive is required for all real file IDs
+    if (!process.env.GOOGLE_DRIVE_DOCS_FOLDER_ID) {
+      return res.status(503).json({ message: "Document storage is not configured." });
+    }
+
+    // Validate file ID against the folder-scoped allowlist before proxying.
+    // This prevents the connector from being used to serve arbitrary Drive files.
+    const allowed = await getAllowedDriveIds();
+    if (!allowed || !allowed.has(fileId)) {
+      return res.status(403).json({ message: "Document not found in governance folder." });
+    }
+
+    try {
+      const connectors = getUncachableGoogleDriveClient();
+
+      // Fetch metadata to determine content type
+      const metaRes = await connectors.proxy("google-drive", `/drive/v3/files/${fileId}?fields=mimeType,name`, { method: "GET" });
+      const meta = await metaRes.json() as { mimeType: string; name: string };
+
+      let buffer: ArrayBuffer;
+      let contentType = "application/pdf";
+
+      if ((meta.mimeType || "").includes("google-apps.document")) {
+        // Google Doc → export as PDF
+        const exportRes = await connectors.proxy("google-drive", `/drive/v3/files/${fileId}/export?mimeType=application/pdf`, { method: "GET" });
+        buffer = await exportRes.arrayBuffer();
+      } else {
+        // Native file (PDF, etc.) — download media bytes
+        const dlRes = await connectors.proxy("google-drive", `/drive/v3/files/${fileId}?alt=media`, { method: "GET" });
+        buffer = await dlRes.arrayBuffer();
+        contentType = meta.mimeType || "application/pdf";
+      }
+
+      const safeName = encodeURIComponent(meta.name || "document");
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `inline; filename="${safeName}.pdf"`);
+      res.send(Buffer.from(buffer));
+    } catch (err) {
+      console.error("[documents] Failed to fetch file content:", err);
+      res.status(500).json({ message: "Failed to load document from Google Drive." });
     }
   });
 

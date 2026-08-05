@@ -40,7 +40,7 @@ const settingsItems: { section: string; items: SettingsItem[] }[] = [
   {
     section: "Documents & Resources",
     items: [
-      { icon: FileText, label: "Official PMA Documents", desc: "Free Soul Charter, Living Dictionary, Constitution, PMA Agreement, Trust Indenture", href: "/library", color: "text-pink-400 bg-pink-500/10 border-pink-500/20", isLink: true },
+      { icon: FileText, label: "Official PMA Documents", desc: "Charter, Living Dictionary, Constitution, PMA Agreement & Trust Indenture — live-synced from Google Drive", href: "/library", color: "text-pink-400 bg-pink-500/10 border-pink-500/20", isLink: true },
     ],
   },
   {

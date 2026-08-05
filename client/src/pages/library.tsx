@@ -41,13 +41,62 @@ function openDictionaryAt(entryNumber?: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-const documents = [
-  { title: "Free Soul Charter", description: "The founding document establishing the Free Soul Ecclesiastical Movement as a sovereign spiritual body.", version: "v1.0.0", date: "2025-08-16", icon: FileText, iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
-  { title: "Free Soul Living Dictionary", description: "88 Essential Definitions for Sovereignty — linguistic manual for free souls seeking truth.", version: "v1.1.1", date: "2025-10-16", icon: Book, iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", isDictionary: true },
-  { title: "Constitution", description: "The constitutional framework governing the Free Soul Movement's internal operations and member rights.", version: "v2.1.0", date: "2025-08-16", icon: BookOpen, iconColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20" },
-  { title: "PMA Agreement", description: "Private Membership Association terms, conditions, and ecclesiastical jurisdiction acknowledgment.", version: "v1.2.0", date: "2025-08-16", icon: Shield, iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20" },
-  { title: "Trust Indenture", description: "Trust documentation for the Movement's assets, operations, and fiduciary responsibilities.", version: "v1.0.0", date: "2025-08-16", icon: Scale, iconColor: "text-green-400 bg-green-500/10 border-green-500/20" },
+// ── Document style mapping — matched by keywords in the Drive file name ───────
+const DOC_STYLES: Array<{
+  keywords: string[];
+  description: string;
+  icon: any;
+  iconColor: string;
+}> = [
+  {
+    keywords: ["charter"],
+    description: "The founding document establishing the Free Soul Ecclesiastical Movement as a sovereign spiritual body.",
+    icon: FileText,
+    iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  },
+  {
+    keywords: ["dictionary", "living"],
+    description: "88 Essential Definitions for Sovereignty — linguistic manual for free souls seeking truth.",
+    icon: Book,
+    iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  },
+  {
+    keywords: ["constitution"],
+    description: "The constitutional framework governing the Free Soul Movement's internal operations and member rights.",
+    icon: BookOpen,
+    iconColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+  },
+  {
+    keywords: ["pma", "agreement", "membership"],
+    description: "Private Membership Association terms, conditions, and ecclesiastical jurisdiction acknowledgment.",
+    icon: Shield,
+    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+  },
+  {
+    keywords: ["trust", "indenture"],
+    description: "Trust documentation for the Movement's assets, operations, and fiduciary responsibilities.",
+    icon: Scale,
+    iconColor: "text-green-400 bg-green-500/10 border-green-500/20",
+  },
 ];
+
+function getDocStyle(name: string) {
+  const lower = name.toLowerCase();
+  const match = DOC_STYLES.find((s) => s.keywords.some((kw) => lower.includes(kw)));
+  return match ?? {
+    description: "Free Soul Movement governance document.",
+    icon: FileText,
+    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+  };
+}
+
+function formatDriveDate(iso: string) {
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return iso;
+  }
+}
 
 const dictionaryEntries = [
   { number: "0", term: "Soul", official: "The spiritual or immaterial part of a human being.", true_def: "The eternal essence of a living being — the breath of the Creator made manifest. The soul is not owned by any church, state, or institution. It is the sovereign core of who you are." },
@@ -287,32 +336,89 @@ export default function LibraryPage() {
 }
 
 function DocumentsTab() {
+  const { data, isLoading, isError } = useQuery<{
+    documents: Array<{ id: string; name: string; mimeType: string; modifiedTime: string; isLive: boolean }>;
+    source: "drive" | "fallback";
+  }>({
+    queryKey: ["/api/documents"],
+    queryFn: async () => {
+      const res = await fetch("/api/documents");
+      if (!res.ok) throw new Error("Failed to load documents");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 min cache — Drive calls are slow
+  });
+
+  function openDocument(doc: { id: string; isLive: boolean }) {
+    window.open(`/api/documents/${doc.id}/content`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="px-5 flex-1 pb-8">
       <div className="glass-card rounded-xl p-4 flex items-center gap-3 mb-6">
         <Shield className="w-6 h-6 text-purple-400 shrink-0" />
         <div>
           <h3 className="font-bold text-sm">Verified Documents</h3>
-          <p className="text-xs text-muted-foreground">All documents are hashed and timestamped for authenticity verification.</p>
+          <p className="text-xs text-muted-foreground">
+            {data?.source === "drive"
+              ? "Documents are live-synced from Google Drive."
+              : "All documents are hashed and timestamped for authenticity verification."}
+          </p>
         </div>
       </div>
 
       <h2 className="text-lg font-bold font-display mb-4">Governance Documents</h2>
-      <div className="space-y-3">
-        {documents.map((doc) => (
-          <div key={doc.title} className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 hover:border-purple-500/20 transition-colors text-left" data-testid={`card-document-${doc.title}`}>
-            <div className={`w-12 h-12 rounded-xl border ${doc.iconColor} flex items-center justify-center shrink-0`}>
-              <doc.icon className="w-6 h-6" />
+
+      {isError && (
+        <div className="glass-card rounded-2xl p-4 text-center text-sm text-muted-foreground">
+          Unable to load documents right now. Please try again.
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="glass-card rounded-2xl p-4 flex items-center gap-4 animate-pulse">
+              <div className="w-12 h-12 rounded-xl bg-white/5 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-white/5 rounded w-2/3" />
+                <div className="h-2 bg-white/5 rounded w-full" />
+                <div className="h-2 bg-white/5 rounded w-1/3" />
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-sm">{doc.title}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{doc.description}</p>
-              <p className="text-[11px] text-primary mt-1">{doc.version} · {doc.date}</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && data && (
+        <div className="space-y-3">
+          {data.documents.map((doc) => {
+            const style = getDocStyle(doc.name);
+            const Icon = style.icon;
+            const date = formatDriveDate(doc.modifiedTime);
+            return (
+              <button
+                key={doc.id}
+                onClick={() => openDocument(doc)}
+                className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 hover:border-purple-500/20 transition-colors text-left"
+                data-testid={`card-document-${doc.name}`}
+              >
+                <div className={`w-12 h-12 rounded-xl border ${style.iconColor} flex items-center justify-center shrink-0`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm">{doc.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{style.description}</p>
+                  <p className="text-[11px] text-primary mt-1">
+                    {doc.isLive ? "🔴 Live" : "Cached"} · {date}
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
