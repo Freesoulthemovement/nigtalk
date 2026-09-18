@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Radio, HeartHandshake, Users } from "lucide-react";
+import { Vote, HeartHandshake, Users } from "lucide-react";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -27,9 +27,9 @@ export default function OnboardingPage({ onComplete, error }: OnboardingProps) {
         <div className="flex justify-center gap-10 py-6 mb-6">
           <div className="flex flex-col items-center gap-2">
             <div className="w-14 h-14 rounded-full bg-[#1a2540] border border-cyan-500/30 flex items-center justify-center">
-              <Radio className="w-6 h-6 text-cyan-400" />
+              <Vote className="w-6 h-6 text-cyan-400" />
             </div>
-            <span className="text-[11px] text-muted-foreground text-center leading-tight">Push-to-Talk<br />Radio</span>
+            <span className="text-[11px] text-muted-foreground text-center leading-tight">Governance &<br />Voting</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <div className="w-14 h-14 rounded-full bg-[#1a2540] border border-purple-500/30 flex items-center justify-center">
